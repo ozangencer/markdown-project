@@ -1,0 +1,128 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #1e1e2f;
+    color: #ffffff;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.container {
+    text-align: center;
+    width: 80%;
+    max-width: 600px;
+    margin: auto;
+}
+
+h1 {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+.description {
+    font-size: 1.2rem;
+    color: #aaaaaa;
+    margin-bottom: 20px;
+}
+
+.upload-box {
+    border: 2px dashed #646cff;
+    padding: 40px;
+    background-color: #2e2e40;
+    border-radius: 10px;
+    cursor: pointer;
+    position: relative;
+    margin-bottom: 20px;
+    transition: border-color 0.3s ease;
+}
+
+.upload-box:hover {
+    border-color: #8585ff;
+}
+
+button {
+    background-color: #646cff;
+    color: white;
+    padding: 12px 20px;
+    font-size: 1rem;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #8585ff;
+}
+
+#result {
+    margin-top: 30px;
+    text-align: left;
+}
+
+#markdownContent {
+    background-color: #2e2e40;
+    color: #ffffff;
+    padding: 15px;
+    border-radius: 10px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: monospace;
+}
+
+#downloadButton {
+    display: inline-block;
+    margin-top: 15px;
+    background-color: #646cff;
+    color: white;
+    padding: 10px 20px;
+    text-decoration: none;
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+#downloadButton:hover {
+    background-color: #8585ff;
+}
+.file-preview {
+    display: flex;
+    align-items: center;
+    margin-top: 15px;
+}
+
+.file-icon {
+    width: 40px;
+    height: 40px;
+    margin-right: 10px;
+}
+
+.file-name {
+    font-size: 1rem;
+    color: #ffffff;
+}
+.button-group {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+#clearButton {
+    background-color: #ff6464;
+    color: white;
+    padding: 12px 20px;
+    font-size: 1rem;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#clearButton:hover {
+    background-color: #ff8585;
+}

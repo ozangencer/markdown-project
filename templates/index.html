@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convert Files to Markdown</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Convert Files to Markdown</h1>
+        <p class="description">Easily convert various file formats into Markdown. Drag and drop your files or click to select.</p>
+        
+        <form id="uploadForm" method="post" enctype="multipart/form-data">
+            <div class="upload-box" id="drop-zone">
+                <p>Drag and drop your file here or click to upload.</p>
+                <input type="file" name="file" id="fileInput" hidden>
+            </div>
+            <button type="submit" id="convertButton">Convert</button>
+            <button type="button" id="clearButton">Clear</button>
+        </form>
+
+        <div id="filePreview" class="file-preview" style="display: none;">
+            <img id="fileIcon" class="file-icon" src="" alt="File Icon">
+            <span id="fileName" class="file-name"></span>
+        </div>
+
+        <div id="result">
+            <h2>Markdown Output</h2>
+            <pre id="markdownContent"></pre>
+            <a id="downloadButton" href="#" style="display: none;">Download Markdown</a>
+        </div>
+    </div>
+    <script src="/static/script.js"></script>
+</body>
+</html>
