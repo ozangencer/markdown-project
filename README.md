@@ -10,11 +10,13 @@ This application allows users to easily convert different file types to Markdown
 
 - Convert various file formats to Markdown
 - YouTube video transcription to Markdown
+- AI-powered summarization and analysis of YouTube video transcripts
 - Image to Markdown conversion using AI (requires OpenAI API key)
 - Drag-and-drop file upload interface
 - Visual file type recognition with custom icons
 - Preview of converted Markdown content
 - Download functionality for converted files
+- Real-time processing indicators for long operations
 - Responsive and user-friendly design
 
 ## Getting Started
@@ -23,7 +25,7 @@ This application allows users to easily convert different file types to Markdown
 
 - Python 3.x
 - pip (Python package manager)
-- OpenAI API key (for image conversion)
+- OpenAI API key (for image conversion and YouTube summarization)
 
 ### Installation
 
@@ -73,7 +75,7 @@ http://127.0.0.1:5001
 5. **Start Over**:
    - Click the "Clear" button to reset the interface and convert another file
 
-### YouTube Transcription
+### YouTube Transcription and Analysis
 1. **Select YouTube Tab**:
    - Click on the "YouTube URL" tab
 
@@ -82,12 +84,26 @@ http://127.0.0.1:5001
 
 3. **Convert the Video**:
    - Click the "Convert" button to extract and convert the transcript
+   - Wait for the transcript to be processed (a loading indicator will be displayed)
 
-4. **View and Download Results**:
+4. **View and Download Transcript**:
    - The converted Markdown transcript will appear in the output area
-   - Click the "Download Markdown" button to save the result
+   - Click the "Download Markdown" button to save the transcript
 
-5. **Start Over**:
+5. **Summarize and Analyze with AI**:
+   - After the transcript is loaded, click the "Summarize with AI" button
+   - The application will generate a comprehensive analysis including:
+     - Brief summary of the video content
+     - Main topics discussed
+     - Key takeaways or insights
+     - Notable quotes
+     - Overall analysis
+
+6. **View and Download Analysis**:
+   - The AI-generated analysis will replace the transcript in the output area
+   - Click the "Download Markdown" button to save the analysis
+
+7. **Start Over**:
    - Click the "Clear" button to reset the interface and convert another video
 
 ## Supported File Types

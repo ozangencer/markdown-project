@@ -30,12 +30,13 @@ def convert_file():
     if file.filename == '':
         return jsonify({"error": "No file selected!"}), 400
 
-    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
-    file.save(filepath)
+    # Geçici bir dosya yolu oluştur
+    temp_filepath = os.path.join(UPLOAD_FOLDER, f"temp_{uuid.uuid4()}_{file.filename}")
+    file.save(temp_filepath)
 
     try:
         # Dosya türünü kontrol et
-        mime_type, _ = mimetypes.guess_type(filepath)
+        mime_type, _ = mimetypes.guess_type(temp_filepath)
         is_image = mime_type and mime_type.startswith('image/')
 
         # Görüntü dosyası ise OpenAI ile işle
@@ -52,19 +53,31 @@ def convert_file():
         else:
             markitdown = MarkItDown()
 
-        result = markitdown.convert(filepath)
+        result = markitdown.convert(temp_filepath)
 
-        output_file = filepath + '.md'
-        with open(output_file, 'w') as f:
+        # Dosya adı için benzersiz bir ID oluştur
+        unique_id = str(uuid.uuid4())
+        output_filename = f"{os.path.splitext(file.filename)[0]}_{unique_id}.md"
+        output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+
+        # Markdown içeriğini kaydet
+        with open(output_filepath, 'w') as f:
             f.write(result.text_content)
+
+        # Geçici dosyayı temizle
+        if os.path.exists(temp_filepath):
+            os.remove(temp_filepath)
 
         # Markdown içeriğini JSON olarak döndür
         return jsonify({
             "markdown": result.text_content,
-            "download_url": f"/download/{os.path.basename(output_file)}"
+            "download_url": f"/download/{output_filename}"
         })
 
     except Exception as e:
+        # Hata durumunda geçici dosyayı temizle
+        if 'temp_filepath' in locals() and os.path.exists(temp_filepath):
+            os.remove(temp_filepath)
         return jsonify({"error": str(e)}), 500
 
 @app.route('/convert-youtube', methods=['POST'])
@@ -87,16 +100,22 @@ def convert_youtube():
         markitdown = MarkItDown()
         result = markitdown.convert(youtube_url)
 
-        # Save the markdown result
+        # Transcript'e YouTube URL'ini ekle
+        enhanced_content = f"# Transcript from YouTube\n\n**Source:** {youtube_url}\n\n---\n\n{result.text_content}"
+
+        # Save the enhanced markdown result
         with open(output_filepath, 'w') as f:
-            f.write(result.text_content)
+            f.write(enhanced_content)
 
         return jsonify({
-            "markdown": result.text_content,
+            "markdown": enhanced_content,
             "download_url": f"/download/{output_filename}"
         })
 
     except Exception as e:
+        # Hata durumunda geçici dosyayı temizle
+        if 'temp_filepath' in locals() and os.path.exists(temp_filepath):
+            os.remove(temp_filepath)
         return jsonify({"error": str(e)}), 500
 
 @app.route('/summarize-youtube', methods=['POST'])
@@ -148,20 +167,26 @@ def summarize_youtube():
         # AI tarafından oluşturulan özet
         summary = response.choices[0].message.content
 
+        # URL ekleme
+        enhanced_summary = f"# AI Summary of YouTube Video\n\n**Source:** {youtube_url}\n\n---\n\n{summary}"
+
         # Özeti bir dosyaya kaydet
         unique_id = str(uuid.uuid4())
         output_filename = f"youtube_summary_{unique_id}.md"
         output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
 
         with open(output_filepath, 'w') as f:
-            f.write(summary)
+            f.write(enhanced_summary)
 
         return jsonify({
-            "markdown": summary,
+            "markdown": enhanced_summary,
             "download_url": f"/download/{output_filename}"
         })
 
     except Exception as e:
+        # Hata durumunda geçici dosyayı temizle
+        if 'temp_filepath' in locals() and os.path.exists(temp_filepath):
+            os.remove(temp_filepath)
         return jsonify({"error": str(e)}), 500
 
 @app.route('/download/<filename>')
@@ -169,4 +194,4 @@ def download_file(filename):
     return send_file(os.path.join(UPLOAD_FOLDER, filename), as_attachment=True)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    app.run(debug=True, port=5002)
