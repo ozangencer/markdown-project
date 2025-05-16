@@ -1,4 +1,11 @@
 document.addEventListener("DOMContentLoaded", () => {
+    // Tab switching elements
+    const fileTabButton = document.getElementById("fileTabButton");
+    const youtubeTabButton = document.getElementById("youtubeTabButton");
+    const fileTab = document.getElementById("fileTab");
+    const youtubeTab = document.getElementById("youtubeTab");
+
+    // File upload elements
     const dropZone = document.getElementById("drop-zone");
     const fileInput = document.getElementById("fileInput");
     const uploadForm = document.getElementById("uploadForm");
@@ -8,6 +15,26 @@ document.addEventListener("DOMContentLoaded", () => {
     const fileIcon = document.getElementById("fileIcon");
     const fileName = document.getElementById("fileName");
     const clearButton = document.getElementById("clearButton");
+
+    // YouTube elements
+    const youtubeForm = document.getElementById("youtubeForm");
+    const youtubeUrl = document.getElementById("youtubeUrl");
+    const clearYoutubeButton = document.getElementById("clearYoutubeButton");
+
+    // Tab switching functionality
+    fileTabButton.addEventListener("click", () => {
+        fileTabButton.classList.add("active");
+        youtubeTabButton.classList.remove("active");
+        fileTab.style.display = "block";
+        youtubeTab.style.display = "none";
+    });
+
+    youtubeTabButton.addEventListener("click", () => {
+        youtubeTabButton.classList.add("active");
+        fileTabButton.classList.remove("active");
+        youtubeTab.style.display = "block";
+        fileTab.style.display = "none";
+    });
 
     // Dosya türü ile ikon eşleştirmeleri
     const fileIcons = {
@@ -109,10 +136,43 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // YouTube video dönüşümü
+    youtubeForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const url = youtubeUrl.value.trim();
+        if (!url) return;
+
+        const response = await fetch("/convert-youtube", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ url }),
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            markdownContent.textContent = result.markdown;
+            downloadButton.href = result.download_url;
+            downloadButton.style.display = "block";
+        } else {
+            const error = await response.json();
+            markdownContent.textContent = `Error: ${error.error}`;
+        }
+    });
+
     // Clear butonu ile önizleme ve diğer içerikler temizlenir
     clearButton.addEventListener("click", () => {
         fileInput.value = "";
         filePreview.style.display = "none";
+        markdownContent.textContent = "";
+        downloadButton.style.display = "none";
+    });
+
+    // YouTube form clear butonu
+    clearYoutubeButton.addEventListener("click", () => {
+        youtubeUrl.value = "";
         markdownContent.textContent = "";
         downloadButton.style.display = "none";
     });

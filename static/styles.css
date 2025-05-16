@@ -28,6 +28,33 @@ h1 {
     margin-bottom: 20px;
 }
 
+.tabs {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.tab-button {
+    background-color: #2e2e40;
+    color: #aaaaaa;
+    padding: 12px 20px;
+    font-size: 1rem;
+    border: none;
+    border-radius: 5px 5px 0 0;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin: 0 5px;
+}
+
+.tab-button.active {
+    background-color: #646cff;
+    color: white;
+}
+
+.tab-content {
+    margin-bottom: 20px;
+}
+
 .upload-box {
     border: 2px dashed #646cff;
     padding: 40px;
@@ -40,6 +67,26 @@ h1 {
 }
 
 .upload-box:hover {
+    border-color: #8585ff;
+}
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px;
+    font-size: 1rem;
+    border: 2px solid #646cff;
+    border-radius: 5px;
+    background-color: #2e2e40;
+    color: white;
+    box-sizing: border-box;
+}
+
+.input-group input:focus {
+    outline: none;
     border-color: #8585ff;
 }
 
@@ -89,6 +136,7 @@ button:hover {
 #downloadButton:hover {
     background-color: #8585ff;
 }
+
 .file-preview {
     display: flex;
     align-items: center;
@@ -105,6 +153,7 @@ button:hover {
     font-size: 1rem;
     color: #ffffff;
 }
+
 .button-group {
     display: flex;
     gap: 10px;
@@ -112,7 +161,7 @@ button:hover {
     margin-top: 10px;
 }
 
-#clearButton {
+#clearButton, #clearYoutubeButton {
     background-color: #ff6464;
     color: white;
     padding: 12px 20px;
@@ -123,6 +172,6 @@ button:hover {
     transition: background-color 0.3s ease;
 }
 
-#clearButton:hover {
+#clearButton:hover, #clearYoutubeButton:hover {
     background-color: #ff8585;
 }

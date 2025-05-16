@@ -9,20 +9,41 @@
 <body>
     <div class="container">
         <h1>Convert Files to Markdown</h1>
-        <p class="description">Easily convert various file formats into Markdown. Drag and drop your files or click to select.</p>
-        
-        <form id="uploadForm" method="post" enctype="multipart/form-data">
-            <div class="upload-box" id="drop-zone">
-                <p>Drag and drop your file here or click to upload.</p>
-                <input type="file" name="file" id="fileInput" hidden>
-            </div>
-            <button type="submit" id="convertButton">Convert</button>
-            <button type="button" id="clearButton">Clear</button>
-        </form>
+        <p class="description">Easily convert various file formats or YouTube videos into Markdown.</p>
 
-        <div id="filePreview" class="file-preview" style="display: none;">
-            <img id="fileIcon" class="file-icon" src="" alt="File Icon">
-            <span id="fileName" class="file-name"></span>
+        <div class="tabs">
+            <button class="tab-button active" id="fileTabButton">File Upload</button>
+            <button class="tab-button" id="youtubeTabButton">YouTube URL</button>
+        </div>
+
+        <div id="fileTab" class="tab-content">
+            <form id="uploadForm" method="post" enctype="multipart/form-data">
+                <div class="upload-box" id="drop-zone">
+                    <p>Drag and drop your file here or click to upload.</p>
+                    <input type="file" name="file" id="fileInput" hidden>
+                </div>
+                <div class="button-group">
+                    <button type="submit" id="convertButton">Convert</button>
+                    <button type="button" id="clearButton">Clear</button>
+                </div>
+            </form>
+
+            <div id="filePreview" class="file-preview" style="display: none;">
+                <img id="fileIcon" class="file-icon" src="" alt="File Icon">
+                <span id="fileName" class="file-name"></span>
+            </div>
+        </div>
+
+        <div id="youtubeTab" class="tab-content" style="display: none;">
+            <form id="youtubeForm">
+                <div class="input-group">
+                    <input type="url" id="youtubeUrl" name="youtubeUrl" placeholder="Enter YouTube URL" required>
+                </div>
+                <div class="button-group">
+                    <button type="submit" id="convertYoutubeButton">Convert</button>
+                    <button type="button" id="clearYoutubeButton">Clear</button>
+                </div>
+            </form>
         </div>
 
         <div id="result">
