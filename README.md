@@ -9,6 +9,8 @@ This application allows users to easily convert different file types to Markdown
 ## Features
 
 - Convert various file formats to Markdown
+- YouTube video transcription to Markdown
+- Image to Markdown conversion using AI (requires OpenAI API key)
 - Drag-and-drop file upload interface
 - Visual file type recognition with custom icons
 - Preview of converted Markdown content
@@ -21,6 +23,7 @@ This application allows users to easily convert different file types to Markdown
 
 - Python 3.x
 - pip (Python package manager)
+- OpenAI API key (for image conversion)
 
 ### Installation
 
@@ -35,31 +38,57 @@ cd markdown-project
 pip install -r requirements.txt
 ```
 
-3. Run the application:
+3. Configure your OpenAI API key:
+   - Create a `.env` file in the project root
+   - Add your OpenAI API key: `OPENAI_API_KEY=your_api_key_here`
+   - This file is included in `.gitignore` for security
+
+4. Run the application:
 ```bash
 python app.py
 ```
 
-4. Open your browser and navigate to:
+5. Open your browser and navigate to:
 ```
-http://127.0.0.1:5000
+http://127.0.0.1:5001
 ```
 
 ## Usage
 
-1. **Upload a File**:
+### File Conversion
+1. **Select File Tab**:
+   - Click on the "File Upload" tab (default)
+
+2. **Upload a File**:
    - Drag and drop a file onto the upload area, or
    - Click the upload area to select a file from your system
 
-2. **Convert the File**:
+3. **Convert the File**:
    - Click the "Convert" button to start the conversion process
 
-3. **View and Download Results**:
+4. **View and Download Results**:
    - The converted Markdown will appear in the output area
    - Click the "Download Markdown" button to save the result
 
-4. **Start Over**:
+5. **Start Over**:
    - Click the "Clear" button to reset the interface and convert another file
+
+### YouTube Transcription
+1. **Select YouTube Tab**:
+   - Click on the "YouTube URL" tab
+
+2. **Enter YouTube URL**:
+   - Paste a valid YouTube video URL in the input field
+
+3. **Convert the Video**:
+   - Click the "Convert" button to extract and convert the transcript
+
+4. **View and Download Results**:
+   - The converted Markdown transcript will appear in the output area
+   - Click the "Download Markdown" button to save the result
+
+5. **Start Over**:
+   - Click the "Clear" button to reset the interface and convert another video
 
 ## Supported File Types
 

@@ -1,11 +1,20 @@
 from flask import Flask, request, render_template, jsonify, send_file
 from markitdown import MarkItDown
+from openai import OpenAI
 import os
 import uuid
+import mimetypes
+from dotenv import load_dotenv
+
+# .env dosyasından çevre değişkenlerini yükle
+load_dotenv()
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# OpenAI istemcisini yapılandır - API anahtarını .env dosyasından al
+openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
 @app.route('/')
 def index():
@@ -24,7 +33,24 @@ def convert_file():
     file.save(filepath)
 
     try:
-        markitdown = MarkItDown()
+        # Dosya türünü kontrol et
+        mime_type, _ = mimetypes.guess_type(filepath)
+        is_image = mime_type and mime_type.startswith('image/')
+
+        # Görüntü dosyası ise OpenAI ile işle
+        if is_image:
+            # API anahtarının ayarlanıp ayarlanmadığını kontrol et
+            try:
+                # API anahtarı ayarlanmamışsa hata verir
+                if not openai_client.api_key:
+                    return jsonify({"error": "OpenAI API key is not set. For image conversion, please set the OPENAI_API_KEY environment variable."}), 400
+
+                markitdown = MarkItDown(llm_client=openai_client, llm_model="gpt-4o")
+            except Exception as e:
+                return jsonify({"error": f"OpenAI error: {str(e)}. Please check your API key."}), 400
+        else:
+            markitdown = MarkItDown()
+
         result = markitdown.convert(filepath)
 
         output_file = filepath + '.md'

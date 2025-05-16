@@ -55,6 +55,28 @@ h1 {
     margin-bottom: 20px;
 }
 
+.info-box {
+    background-color: #2e2e40;
+    border-left: 4px solid #646cff;
+    padding: 10px 15px;
+    margin-bottom: 20px;
+    font-size: 0.9rem;
+    color: #aaaaaa;
+    border-radius: 0 5px 5px 0;
+    text-align: left;
+}
+
+.info-box strong {
+    color: #ffffff;
+}
+
+.info-box code {
+    background-color: #1e1e2f;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-family: monospace;
+}
+
 .upload-box {
     border: 2px dashed #646cff;
     padding: 40px;
@@ -174,4 +196,46 @@ button:hover {
 
 #clearButton:hover, #clearYoutubeButton:hover {
     background-color: #ff8585;
+}
+
+/* Loading overlay styles */
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(30, 30, 47, 0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.loading-overlay p {
+    color: #ffffff;
+    margin-top: 20px;
+    font-size: 1.2rem;
+}
+
+.spinner {
+    width: 60px;
+    height: 60px;
+    border: 5px solid #646cff;
+    border-top: 5px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Disabled button styles */
+button:disabled {
+    background-color: #444458;
+    cursor: not-allowed;
+    opacity: 0.7;
 }

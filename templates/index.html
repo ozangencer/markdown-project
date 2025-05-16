@@ -15,6 +15,9 @@
             <button class="tab-button active" id="fileTabButton">File Upload</button>
             <button class="tab-button" id="youtubeTabButton">YouTube URL</button>
         </div>
+        <div class="info-box">
+            <p><strong>Note:</strong> For image files, an OpenAI API key must be set in the <code>.env</code> file.</p>
+        </div>
 
         <div id="fileTab" class="tab-content">
             <form id="uploadForm" method="post" enctype="multipart/form-data">
@@ -44,6 +47,11 @@
                     <button type="button" id="clearYoutubeButton">Clear</button>
                 </div>
             </form>
+        </div>
+
+        <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+            <div class="spinner"></div>
+            <p>Processing your request...</p>
         </div>
 
         <div id="result">

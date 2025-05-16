@@ -115,24 +115,60 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // Loading overlay element
+    const loadingOverlay = document.getElementById("loadingOverlay");
+
+    // Form butonları
+    const convertButton = document.getElementById("convertButton");
+    const convertYoutubeButton = document.getElementById("convertYoutubeButton");
+
+    // Yükleme durumunu göster/gizle
+    const showLoading = () => {
+        loadingOverlay.style.display = "flex";
+        // Butonları devre dışı bırak
+        convertButton.disabled = true;
+        convertYoutubeButton.disabled = true;
+        clearButton.disabled = true;
+        clearYoutubeButton.disabled = true;
+    };
+
+    const hideLoading = () => {
+        loadingOverlay.style.display = "none";
+        // Butonları tekrar aktif et
+        convertButton.disabled = false;
+        convertYoutubeButton.disabled = false;
+        clearButton.disabled = false;
+        clearYoutubeButton.disabled = false;
+    };
+
     // Dosya dönüşümü için form gönderimi
     uploadForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        const formData = new FormData(uploadForm);
-        const response = await fetch("/convert", {
-            method: "POST",
-            body: formData,
-        });
+        // Yükleme durumunu göster
+        showLoading();
 
-        if (response.ok) {
-            const result = await response.json();
-            markdownContent.textContent = result.markdown;
-            downloadButton.href = result.download_url;
-            downloadButton.style.display = "block";
-        } else {
-            const error = await response.json();
-            markdownContent.textContent = `Error: ${error.error}`;
+        try {
+            const formData = new FormData(uploadForm);
+            const response = await fetch("/convert", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                markdownContent.textContent = result.markdown;
+                downloadButton.href = result.download_url;
+                downloadButton.style.display = "block";
+            } else {
+                const error = await response.json();
+                markdownContent.textContent = `Error: ${error.error}`;
+            }
+        } catch (error) {
+            markdownContent.textContent = `Error: ${error.message}`;
+        } finally {
+            // İşlem bittiğinde yükleme durumunu gizle
+            hideLoading();
         }
     });
 
@@ -143,22 +179,32 @@ document.addEventListener("DOMContentLoaded", () => {
         const url = youtubeUrl.value.trim();
         if (!url) return;
 
-        const response = await fetch("/convert-youtube", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ url }),
-        });
+        // Yükleme durumunu göster
+        showLoading();
 
-        if (response.ok) {
-            const result = await response.json();
-            markdownContent.textContent = result.markdown;
-            downloadButton.href = result.download_url;
-            downloadButton.style.display = "block";
-        } else {
-            const error = await response.json();
-            markdownContent.textContent = `Error: ${error.error}`;
+        try {
+            const response = await fetch("/convert-youtube", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ url }),
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                markdownContent.textContent = result.markdown;
+                downloadButton.href = result.download_url;
+                downloadButton.style.display = "block";
+            } else {
+                const error = await response.json();
+                markdownContent.textContent = `Error: ${error.error}`;
+            }
+        } catch (error) {
+            markdownContent.textContent = `Error: ${error.message}`;
+        } finally {
+            // İşlem bittiğinde yükleme durumunu gizle
+            hideLoading();
         }
     });
 
