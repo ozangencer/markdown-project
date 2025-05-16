@@ -32,9 +32,10 @@ The backend is implemented in `app.py` using Flask:
 
 - **File Processing**:
   - Uses the `MarkItDown` library to convert uploaded files to Markdown
-  - Saves uploaded files in the `uploads` directory
-  - Creates corresponding `.md` files for each conversion
-  - Stores YouTube transcripts and AI summaries with unique file names
+  - Creates temporary files for processing and removes them after conversion
+  - Only keeps generated Markdown files in the `uploads` directory
+  - Stores all outputs with unique identifiers in filenames
+  - Adds source URL references to YouTube transcripts and summaries
 
 - **AI Integration**:
   - Uses OpenAI's GPT-4o model for analyzing images (via MarkItDown)
@@ -110,25 +111,28 @@ Based on the detected type, appropriate icons are displayed:
 
 #### File Conversion
 1. Files are uploaded to the server using a POST request to `/convert`
-2. The server saves the uploaded file in the `uploads` directory
+2. The server saves the uploaded file to a temporary location with a unique ID
 3. For image files, OpenAI API is used to generate descriptions (if API key exists)
 4. The file is processed using the `MarkItDown` library
-5. The resulting Markdown is saved as a new file with `.md` extension
-6. The server returns the Markdown content and a download URL to the client
+5. The resulting Markdown is saved as a new file with unique identifier in filename
+6. The temporary uploaded file is deleted after processing
+7. The server returns the Markdown content and a download URL to the client
 
 #### YouTube Transcription
 1. YouTube URL is sent to the server using a POST request to `/convert-youtube`
 2. The MarkItDown library extracts the transcript using YouTube's API
-3. The resulting transcript is saved as a Markdown file
-4. The server returns the transcript content and a download URL to the client
+3. The application adds a header and source URL to the transcript
+4. The resulting enhanced transcript is saved as a Markdown file with unique ID
+5. The server returns the transcript content and a download URL to the client
 
 #### YouTube Summarization
 1. The YouTube URL and transcript are sent to `/summarize-youtube`
 2. The server validates the OpenAI API key availability
 3. The transcript is sent to OpenAI API with a structured prompt
 4. The API generates a comprehensive summary and analysis
-5. The resulting analysis is saved as a separate Markdown file
-6. The server returns the analysis content and a download URL to the client
+5. The application adds a header and source URL to the generated analysis
+6. The resulting enhanced analysis is saved as a separate Markdown file with unique ID
+7. The server returns the analysis content and a download URL to the client
 
 ### Error Handling
 
@@ -165,19 +169,20 @@ markdown-project/
 │   └── styles.css             # CSS styles
 ├── templates/
 │   └── index.html             # Main HTML template
-└── uploads/                   # Directory for uploaded files (not in git)
-    ├── *.md                   # Generated markdown files
-    ├── youtube_*.md           # YouTube transcript files
-    └── youtube_summary_*.md   # AI-generated summary files
+└── uploads/                   # Directory for Markdown files only (not in git)
+    ├── *_[uuid].md            # Generated markdown files from uploaded files
+    ├── youtube_[uuid].md      # YouTube transcript files with source URLs
+    └── youtube_summary_[uuid].md # AI-generated summary files with source URLs
 ```
 
 ## Security Considerations
 
 - The application uses Flask's built-in security features for file uploads
 - API keys are stored in a .env file and not committed to version control
-- Files are saved with unique identifiers for YouTube transcripts and summaries
-- Original filenames are preserved for regular file uploads, which could potentially lead to conflicts
-- UUID is used to prevent filename collisions for YouTube-related files
+- All files are processed in temporary locations before being removed
+- All generated Markdown files have unique identifiers in their filenames
+- Original input files are never stored permanently in the uploads directory
+- UUID is used to prevent filename collisions for all generated files
 - No authentication is implemented, making it suitable only for personal or internal use
 - Error messages from exceptions are directly exposed to the client
 

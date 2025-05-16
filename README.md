@@ -9,13 +9,14 @@ This application allows users to easily convert different file types to Markdown
 ## Features
 
 - Convert various file formats to Markdown
-- YouTube video transcription to Markdown
+- YouTube video transcription to Markdown with source URL reference
 - AI-powered summarization and analysis of YouTube video transcripts
 - Image to Markdown conversion using AI (requires OpenAI API key)
 - Drag-and-drop file upload interface
 - Visual file type recognition with custom icons
 - Preview of converted Markdown content
 - Download functionality for converted files
+- Clean uploads folder with only Markdown output files
 - Real-time processing indicators for long operations
 - Responsive and user-friendly design
 
@@ -88,6 +89,7 @@ http://127.0.0.1:5001
 
 4. **View and Download Transcript**:
    - The converted Markdown transcript will appear in the output area
+   - The transcript includes the YouTube video URL as reference
    - Click the "Download Markdown" button to save the transcript
 
 5. **Summarize and Analyze with AI**:
@@ -101,6 +103,7 @@ http://127.0.0.1:5001
 
 6. **View and Download Analysis**:
    - The AI-generated analysis will replace the transcript in the output area
+   - The analysis includes the YouTube video URL as reference
    - Click the "Download Markdown" button to save the analysis
 
 7. **Start Over**:
