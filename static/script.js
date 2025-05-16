@@ -20,6 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const youtubeForm = document.getElementById("youtubeForm");
     const youtubeUrl = document.getElementById("youtubeUrl");
     const clearYoutubeButton = document.getElementById("clearYoutubeButton");
+    const summarizeYoutubeButton = document.getElementById("summarizeYoutubeButton");
 
     // Tab switching functionality
     fileTabButton.addEventListener("click", () => {
@@ -122,12 +123,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const convertButton = document.getElementById("convertButton");
     const convertYoutubeButton = document.getElementById("convertYoutubeButton");
 
+    // Current transcript content
+    let currentTranscript = "";
+
     // Yükleme durumunu göster/gizle
     const showLoading = () => {
         loadingOverlay.style.display = "flex";
         // Butonları devre dışı bırak
         convertButton.disabled = true;
         convertYoutubeButton.disabled = true;
+        summarizeYoutubeButton.disabled = true;
         clearButton.disabled = true;
         clearYoutubeButton.disabled = true;
     };
@@ -137,6 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Butonları tekrar aktif et
         convertButton.disabled = false;
         convertYoutubeButton.disabled = false;
+        summarizeYoutubeButton.disabled = false;
         clearButton.disabled = false;
         clearYoutubeButton.disabled = false;
     };
@@ -182,6 +188,10 @@ document.addEventListener("DOMContentLoaded", () => {
         // Yükleme durumunu göster
         showLoading();
 
+        // Başlangıçta özetleme butonunu devre dışı bırak
+        summarizeYoutubeButton.disabled = true;
+        currentTranscript = "";
+
         try {
             const response = await fetch("/convert-youtube", {
                 method: "POST",
@@ -193,15 +203,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (response.ok) {
                 const result = await response.json();
+                currentTranscript = result.markdown; // Transcript'i kaydet
                 markdownContent.textContent = result.markdown;
                 downloadButton.href = result.download_url;
                 downloadButton.style.display = "block";
+
+                // Transcript alındıysa özetleme butonunu aktifleştir
+                summarizeYoutubeButton.disabled = false;
             } else {
                 const error = await response.json();
                 markdownContent.textContent = `Error: ${error.error}`;
+
+                // Hata durumunda özetleme butonunu devre dışı bırak
+                summarizeYoutubeButton.disabled = true;
+                currentTranscript = "";
             }
         } catch (error) {
             markdownContent.textContent = `Error: ${error.message}`;
+
+            // Hata durumunda özetleme butonunu devre dışı bırak
+            summarizeYoutubeButton.disabled = true;
+            currentTranscript = "";
         } finally {
             // İşlem bittiğinde yükleme durumunu gizle
             hideLoading();
@@ -221,5 +243,53 @@ document.addEventListener("DOMContentLoaded", () => {
         youtubeUrl.value = "";
         markdownContent.textContent = "";
         downloadButton.style.display = "none";
+        currentTranscript = "";
+        summarizeYoutubeButton.disabled = true;
+    });
+
+    // Summarize butonu ile AI özeti alma
+    summarizeYoutubeButton.addEventListener("click", async () => {
+        // Eğer transcript yoksa işlem yapma
+        if (!currentTranscript) {
+            alert("Please convert a YouTube video first to get a transcript.");
+            return;
+        }
+
+        const url = youtubeUrl.value.trim();
+        if (!url) {
+            alert("Please enter a valid YouTube URL.");
+            return;
+        }
+
+        // Yükleme durumunu göster
+        showLoading();
+
+        try {
+            const response = await fetch("/summarize-youtube", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    url: url,
+                    transcript: currentTranscript
+                }),
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                markdownContent.textContent = result.markdown;
+                downloadButton.href = result.download_url;
+                downloadButton.style.display = "block";
+            } else {
+                const error = await response.json();
+                markdownContent.textContent = `Error: ${error.error}`;
+            }
+        } catch (error) {
+            markdownContent.textContent = `Error: ${error.message}`;
+        } finally {
+            // İşlem bittiğinde yükleme durumunu gizle
+            hideLoading();
+        }
     });
 });

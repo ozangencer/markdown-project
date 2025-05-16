@@ -4,6 +4,7 @@ from openai import OpenAI
 import os
 import uuid
 import mimetypes
+import json
 from dotenv import load_dotenv
 
 # .env dosyasından çevre değişkenlerini yükle
@@ -92,6 +93,71 @@ def convert_youtube():
 
         return jsonify({
             "markdown": result.text_content,
+            "download_url": f"/download/{output_filename}"
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/summarize-youtube', methods=['POST'])
+def summarize_youtube():
+    data = request.json
+    if not data or 'url' not in data or 'transcript' not in data:
+        return jsonify({"error": "YouTube URL and transcript are required!"}), 400
+
+    youtube_url = data['url']
+    transcript = data['transcript']
+
+    if not youtube_url or not transcript:
+        return jsonify({"error": "YouTube URL or transcript is empty!"}), 400
+
+    try:
+        # API anahtarının ayarlanıp ayarlanmadığını kontrol et
+        if not openai_client.api_key:
+            return jsonify({"error": "OpenAI API key is not set. Please set it in the .env file."}), 400
+
+        # OpenAI API'yi kullanarak transcript'i özetle
+        prompt = f"""
+        You are an expert video summarizer and analyzer. Summarize and analyze the following YouTube video transcript.
+
+        Video URL: {youtube_url}
+
+        Transcript:
+        {transcript}
+
+        Please provide:
+        1. A concise 2-3 sentence summary of the video content
+        2. The main topics covered
+        3. Key takeaways or insights
+        4. Any notable quotes or statements
+        5. An overall analysis of the content
+
+        Format your response in Markdown with appropriate headings, bullet points, and formatting.
+        """
+
+        # ChatGPT API çağrısı
+        response = openai_client.chat.completions.create(
+            model="gpt-4o",  # veya "gpt-3.5-turbo" gibi bir modeli kullanabilirsiniz
+            messages=[
+                {"role": "system", "content": "You are an expert video summarizer that creates well-structured markdown summaries."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=1500
+        )
+
+        # AI tarafından oluşturulan özet
+        summary = response.choices[0].message.content
+
+        # Özeti bir dosyaya kaydet
+        unique_id = str(uuid.uuid4())
+        output_filename = f"youtube_summary_{unique_id}.md"
+        output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+
+        with open(output_filepath, 'w') as f:
+            f.write(summary)
+
+        return jsonify({
+            "markdown": summary,
             "download_url": f"/download/{output_filename}"
         })
 
