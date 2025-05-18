@@ -5,6 +5,10 @@ import os
 import uuid
 import mimetypes
 import json
+import zipfile
+import tempfile
+import shutil
+from pathlib import Path
 from dotenv import load_dotenv
 
 # .env dosyasından çevre değişkenlerini yükle
@@ -38,6 +42,11 @@ def convert_file():
         # Dosya türünü kontrol et
         mime_type, _ = mimetypes.guess_type(temp_filepath)
         is_image = mime_type and mime_type.startswith('image/')
+        is_zip = mime_type == 'application/zip' or file.filename.lower().endswith('.zip')
+
+        # ZIP dosyası ise içeriğini işle
+        if is_zip:
+            return process_zip_file(temp_filepath, file.filename)
 
         # Görüntü dosyası ise OpenAI ile işle
         if is_image:
@@ -47,13 +56,19 @@ def convert_file():
                 if not openai_client.api_key:
                     return jsonify({"error": "OpenAI API key is not set. For image conversion, please set the OPENAI_API_KEY environment variable."}), 400
 
+                # Görüntü açıklaması için özelleştirilmiş prompt kullan (convert metodunda)
+                custom_prompt = "Bu görselde ne olduğunu detaylı olarak ve Türkçe açıkla. Ana unsurları, renkler ve kompozisyonu belirt. Metin varsa, metni de belirt."
                 markitdown = MarkItDown(llm_client=openai_client, llm_model="gpt-4o")
             except Exception as e:
                 return jsonify({"error": f"OpenAI error: {str(e)}. Please check your API key."}), 400
         else:
             markitdown = MarkItDown()
 
-        result = markitdown.convert(temp_filepath)
+        # Görüntüyse özelleştirilmiş promptu convert metoduna geçir
+        if is_image and openai_client.api_key:
+            result = markitdown.convert(temp_filepath, llm_prompt=custom_prompt)
+        else:
+            result = markitdown.convert(temp_filepath)
 
         # Dosya adı için benzersiz bir ID oluştur
         unique_id = str(uuid.uuid4())
@@ -61,7 +76,7 @@ def convert_file():
         output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
 
         # Markdown içeriğini kaydet
-        with open(output_filepath, 'w') as f:
+        with open(output_filepath, 'w', encoding='utf-8') as f:
             f.write(result.text_content)
 
         # Geçici dosyayı temizle
@@ -79,6 +94,90 @@ def convert_file():
         if 'temp_filepath' in locals() and os.path.exists(temp_filepath):
             os.remove(temp_filepath)
         return jsonify({"error": str(e)}), 500
+
+def process_zip_file(zip_filepath, original_filename):
+    """
+    ZIP dosyasının içindeki tüm dosyaları ayıklayıp her birini Markdown'a dönüştüren fonksiyon
+    """
+    # Sonuç içeriğini tutacak olan string
+    markdown_content = f"# {original_filename} içindeki dosyalar\n\n"
+
+    # ZIP dosyasını geçici bir dizine çıkar
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # ZIP dosyasını açıp içeriğini geçici dizine çıkar
+        with zipfile.ZipFile(zip_filepath, 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
+
+        # ZIP dosyasını artık silebiliriz
+        if os.path.exists(zip_filepath):
+            os.remove(zip_filepath)
+
+        # Çıkarılan dosyaları işle
+        extracted_files = []
+        for root, _, files in os.walk(temp_dir):
+            for filename in files:
+                file_path = os.path.join(root, filename)
+                relative_path = os.path.relpath(file_path, temp_dir)
+                extracted_files.append((file_path, relative_path))
+
+        # Dosyaları doğal sıralamaya göre sırala (numaralandırılmış dosyalar için)
+        def natural_sort_key(s):
+            import re
+            # Sıralama anahtarı oluştur: "abc123def456" -> ["abc", 123, "def", 456]
+            # Bu, dosya adlarındaki sayıları sayısal olarak sıralamaya olanak tanır
+            return [int(text) if text.isdigit() else text.lower()
+                   for text in re.split(r'(\d+)', s[1])]
+
+        # Dosyaları doğal sıralama ile sırala
+        extracted_files.sort(key=natural_sort_key)
+
+        # Her çıkarılan dosyayı Markdown'a dönüştür
+        for file_path, relative_path in extracted_files:
+            try:
+                # Dosya türünü kontrol et
+                mime_type, _ = mimetypes.guess_type(file_path)
+                is_image = mime_type and mime_type.startswith('image/')
+
+                # Görüntü dosyası ise OpenAI ile işle
+                if is_image:
+                    # API anahtarının varlığını kontrol et
+                    if not openai_client.api_key:
+                        markdown_content += f"\n## {relative_path}\n\n*Bu bir görüntü dosyasıdır ve dönüştürmek için OpenAI API anahtarı gereklidir.*\n\n"
+                        continue
+
+                    # Görüntü açıklaması için özelleştirilmiş prompt kullan (convert metodunda)
+                    custom_prompt = "Bu görselde ne olduğunu detaylı olarak ve Türkçe açıkla. Ana unsurları, renkler ve kompozisyonu belirt. Metin varsa, metni de belirt."
+                    markitdown = MarkItDown(llm_client=openai_client, llm_model="gpt-4o")
+                else:
+                    markitdown = MarkItDown()
+
+                # Dosyayı dönüştür - Görüntüyse özelleştirilmiş promptu convert metoduna geçir
+                if is_image and openai_client.api_key:
+                    result = markitdown.convert(file_path, llm_prompt=custom_prompt)
+                else:
+                    result = markitdown.convert(file_path)
+
+                # Dönüştürülmüş içeriği sonuç dosyasına ekle
+                markdown_content += f"\n## {relative_path}\n\n{result.text_content}\n\n---\n\n"
+
+            except Exception as e:
+                # Dönüştürme hatası durumunda hatayı içeriğe ekle
+                markdown_content += f"\n## {relative_path}\n\n*Dönüştürme hatası: {str(e)}*\n\n---\n\n"
+
+    # Tüm içerik için benzersiz bir ID oluştur
+    unique_id = str(uuid.uuid4())
+    output_filename = f"{os.path.splitext(original_filename)[0]}_zip_{unique_id}.md"
+    output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+
+    # Markdown içeriğini kaydet
+    with open(output_filepath, 'w', encoding='utf-8') as f:
+        f.write(markdown_content)
+
+    # Markdown içeriğini JSON olarak döndür
+    return jsonify({
+        "markdown": markdown_content,
+        "download_url": f"/download/{output_filename}"
+    })
 
 @app.route('/convert-youtube', methods=['POST'])
 def convert_youtube():
@@ -104,7 +203,7 @@ def convert_youtube():
         enhanced_content = f"# Transcript from YouTube\n\n**Source:** {youtube_url}\n\n---\n\n{result.text_content}"
 
         # Save the enhanced markdown result
-        with open(output_filepath, 'w') as f:
+        with open(output_filepath, 'w', encoding='utf-8') as f:
             f.write(enhanced_content)
 
         return jsonify({
@@ -113,9 +212,6 @@ def convert_youtube():
         })
 
     except Exception as e:
-        # Hata durumunda geçici dosyayı temizle
-        if 'temp_filepath' in locals() and os.path.exists(temp_filepath):
-            os.remove(temp_filepath)
         return jsonify({"error": str(e)}), 500
 
 @app.route('/summarize-youtube', methods=['POST'])
@@ -175,7 +271,7 @@ def summarize_youtube():
         output_filename = f"youtube_summary_{unique_id}.md"
         output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
 
-        with open(output_filepath, 'w') as f:
+        with open(output_filepath, 'w', encoding='utf-8') as f:
             f.write(enhanced_summary)
 
         return jsonify({
@@ -184,9 +280,6 @@ def summarize_youtube():
         })
 
     except Exception as e:
-        # Hata durumunda geçici dosyayı temizle
-        if 'temp_filepath' in locals() and os.path.exists(temp_filepath):
-            os.remove(temp_filepath)
         return jsonify({"error": str(e)}), 500
 
 @app.route('/download/<filename>')

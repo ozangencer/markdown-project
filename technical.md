@@ -113,10 +113,16 @@ Based on the detected type, appropriate icons are displayed:
 1. Files are uploaded to the server using a POST request to `/convert`
 2. The server saves the uploaded file to a temporary location with a unique ID
 3. For image files, OpenAI API is used to generate descriptions (if API key exists)
-4. The file is processed using the `MarkItDown` library
-5. The resulting Markdown is saved as a new file with unique identifier in filename
-6. The temporary uploaded file is deleted after processing
-7. The server returns the Markdown content and a download URL to the client
+4. For ZIP files, the application:
+   - Extracts all files to a temporary directory
+   - Processes each extracted file individually using the MarkItDown library
+   - Uses natural sorting algorithm to order files numerically (e.g., "Slide1" before "Slide2")
+   - Combines all conversions into a single Markdown file with proper headings
+   - Handles errors for individual files without failing the entire process
+5. For regular files, the file is processed using the `MarkItDown` library
+6. The resulting Markdown is saved as a new file with unique identifier in filename
+7. The temporary uploaded file is deleted after processing
+8. The server returns the Markdown content and a download URL to the client
 
 #### YouTube Transcription
 1. YouTube URL is sent to the server using a POST request to `/convert-youtube`
@@ -211,13 +217,16 @@ The application is designed for simplicity rather than high-volume processing:
    - Optimize OpenAI prompts for faster responses
 
 3. **Feature Additions**:
-   - Support for batch conversions
+   - ✅ Support for ZIP file extraction and conversion
+   - ✅ Natural sorting algorithm for numerical filenames
+   - Support for additional archive formats (RAR, 7z, etc.)
    - Configurable AI summarization options (brief vs detailed, focus areas)
    - Multiple language support for transcripts and summaries
    - Customization options for Markdown output
    - Account-based file storage
    - Preview of original documents
    - Custom prompt templates for different summarization styles
+   - Configurable sorting options for ZIP file contents
 
 4. **AI Enhancements**:
    - Add sentiment analysis for YouTube videos

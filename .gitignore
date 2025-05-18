@@ -28,3 +28,4 @@ Thumbs.db
 
 # Uploaded files and generated markdown
 uploads/
+**/.claude/settings.local.json

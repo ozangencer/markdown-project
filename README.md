@@ -12,6 +12,8 @@ This application allows users to easily convert different file types to Markdown
 - YouTube video transcription to Markdown with source URL reference
 - AI-powered summarization and analysis of YouTube video transcripts
 - Image to Markdown conversion using AI (requires OpenAI API key)
+- ZIP file processing with automatic extraction and conversion of all contents
+- Natural sorting for extracted files with numerical names (e.g., "Slide1.png" before "Slide2.png")
 - Drag-and-drop file upload interface
 - Visual file type recognition with custom icons
 - Preview of converted Markdown content
@@ -116,11 +118,9 @@ The application supports various file formats through the MarkItDown library, in
 - Microsoft Office documents (.docx, .doc, .xlsx, .xls)
 - PDF files
 - Images (png, jpg, jpeg, gif)
+- ZIP archives (extracts and converts all files inside)
 - And other formats supported by the MarkItDown library
 
-## License
-
-[MIT License](LICENSE)
 
 ## Acknowledgments
 
