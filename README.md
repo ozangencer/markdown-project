@@ -170,7 +170,7 @@ http://127.0.0.1:5003
 
 The application supports various file formats through the MarkItDown library, including:
 
-- Microsoft Office documents (.docx, .doc, .xlsx, .xls)
+- Microsoft Office documents (.docx, .doc, .xlsx, .xls, .pptx, .ppt)
 - PDF files
 - Images (png, jpg, jpeg, gif) - **AI-powered analysis with multiple provider support**
 - **Archive files** (ZIP, .panda and other configured formats - extracts and converts all files inside, excluding hidden files)

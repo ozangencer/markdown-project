@@ -114,6 +114,8 @@ document.addEventListener("DOMContentLoaded", () => {
         'application/vnd.ms-excel': 'excel.png',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'word.png',
         'application/msword': 'word.png',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'powerpoint.png',
+        'application/vnd.ms-powerpoint': 'powerpoint.png',
         'application/pdf': 'pdf.png',
         'image/png': 'image.png',
         'image/jpeg': 'image.png',
@@ -134,11 +136,14 @@ document.addEventListener("DOMContentLoaded", () => {
             'xls': 'excel.png',
             'docx': 'word.png',
             'doc': 'word.png',
+            'pptx': 'powerpoint.png',
+            'ppt': 'powerpoint.png',
             'pdf': 'pdf.png',
             'png': 'image.png',
             'jpg': 'image.png',
             'jpeg': 'image.png',
-            'gif': 'image.png'
+            'gif': 'image.png',
+            'panda': 'panda.png'
         };
 
         return `/static/icons/${extensionIcons[extension] || fileIcons['default']}`;

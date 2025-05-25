@@ -193,12 +193,21 @@ The application detects file types using:
 1. MIME types from the File API
 2. File extensions as a fallback
 
+**Icon System**: The application features a dual-layer icon detection system:
+- **Primary**: MIME type matching via `fileIcons` object
+- **Fallback**: File extension matching via `extensionIcons` object
+- **Default**: Falls back to `default.png` if no match found
+
 Based on the detected type, appropriate icons are displayed:
 - Word documents: word.png
 - Excel spreadsheets: excel.png
+- PowerPoint presentations: powerpoint.png (MIME + extension support)
 - PDF files: pdf.png
 - Images: image.png
+- .panda files: panda.png (extension-based, treated as archives)
 - Other files: default.png
+
+**Note**: `powerpoint.png` and `panda.png` icons need to be added to `/static/icons/` directory. See `/static/icons/README.md` for requirements.
 
 ### Conversion Processes
 
