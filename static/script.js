@@ -472,10 +472,14 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Set AI Provider
-    setProviderButton.addEventListener("click", async () => {
+    // Auto-set provider on dropdown change
+    aiProviderSelect.addEventListener("change", async () => {
         const selectedProvider = aiProviderSelect.value;
-        
+        await setProvider(selectedProvider);
+    });
+
+    // Set AI Provider (both button click and dropdown change use this)
+    async function setProvider(selectedProvider) {
         providerStatus.className = "provider-status loading";
         providerStatus.textContent = "Setting provider...";
         
@@ -500,6 +504,12 @@ document.addEventListener("DOMContentLoaded", () => {
             providerStatus.className = "provider-status error";
             providerStatus.textContent = `Error: ${error.message}`;
         }
+    }
+
+    // Set AI Provider button (keep for manual refresh if needed)
+    setProviderButton.addEventListener("click", async () => {
+        const selectedProvider = aiProviderSelect.value;
+        await setProvider(selectedProvider);
     });
 
     // Load AI providers on page load

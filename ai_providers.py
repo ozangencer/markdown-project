@@ -108,6 +108,8 @@ class DeepSeekProvider(AIProvider):
     
     def process_image(self, image_path: str, prompt: str = None) -> str:
         """DeepSeek görüntü işleme desteklemiyor"""
+        # Parametreler kullanılmıyor ama interface uyumluluğu için gerekli
+        _ = image_path, prompt
         raise Exception("DeepSeek V3 does not support image processing yet. Please use OpenAI or Google providers for image analysis. DeepSeek-VL2 (vision model) is coming soon to the API.")
 
 class GoogleProvider(AIProvider):

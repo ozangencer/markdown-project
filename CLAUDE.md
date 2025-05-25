@@ -1,0 +1,1 @@
+- Bir özelliğe dair güncellemeyi tamamladığında @README.md  ve @technical.md  dokümanlarını güncellemen gerekiyor mu diye bir kontrol et. Kod değişiklikleri ile proje dokümantasyonu her zaman güncel olsun.

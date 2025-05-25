@@ -14,7 +14,9 @@ This application allows users to easily convert different file types to Markdown
 - **Multiple YouTube URL processing** - Convert multiple YouTube videos in one operation
 - AI-powered summarization and analysis of YouTube video transcripts
 - **Batch YouTube summarization** - Summarize multiple YouTube videos together with AI
-- Image to Markdown conversion using AI (requires OpenAI API key)
+- **Multi-AI Provider Support** - Choose between OpenAI, DeepSeek, and Google Gemini
+- Image to Markdown conversion using AI with multiple provider options
+- **Custom filename support** - Set custom names for downloaded Markdown files
 - ZIP file processing with automatic extraction and conversion of all contents
 - Natural sorting for extracted files with numerical names (e.g., "Slide1.png" before "Slide2.png")
 - Drag-and-drop file upload interface with multi-file support
@@ -32,7 +34,10 @@ This application allows users to easily convert different file types to Markdown
 
 - Python 3.x
 - pip (Python package manager)
-- OpenAI API key (for image conversion and YouTube summarization)
+- AI Provider API key (choose one or more):
+  - OpenAI API key (for GPT-4o)
+  - DeepSeek API key (for fast and cost-effective processing)
+  - Google API key (for Gemini 2.5 Flash - fast image processing)
 
 ### Installation
 
@@ -47,9 +52,15 @@ cd markdown-project
 pip install -r requirements.txt
 ```
 
-3. Configure your OpenAI API key:
+3. Configure your AI provider API keys:
    - Create a `.env` file in the project root
-   - Add your OpenAI API key: `OPENAI_API_KEY=your_api_key_here`
+   - Add one or more API keys:
+     ```
+     OPENAI_API_KEY=your_openai_key_here
+     DEEPSEEK_API_KEY=your_deepseek_key_here
+     GOOGLE_API_KEY=your_google_key_here
+     AI_PROVIDER=openai  # Default provider (optional)
+     ```
    - This file is included in `.gitignore` for security
 
 4. Run the application:
@@ -59,10 +70,19 @@ python app.py
 
 5. Open your browser and navigate to:
 ```
-http://127.0.0.1:5001
+http://127.0.0.1:5003
 ```
 
 ## Usage
+
+### AI Provider Selection
+1. **Choose AI Provider**:
+   - In the "AI Provider Settings" section, select your preferred provider:
+     - **OpenAI (GPT-4o)**: Best quality, supports all features including image processing
+     - **DeepSeek**: Fast and cost-effective, text processing only
+     - **Google (Gemini 2.5 Flash)**: Very fast, excellent image processing
+   - The provider will be activated automatically when you select it from the dropdown
+   - The status indicator will show if the provider is ready
 
 ### File Conversion
 1. **Select File Tab**:
@@ -84,7 +104,8 @@ http://127.0.0.1:5001
 
 5. **View and Download Results**:
    - The converted Markdown will appear in the output area
-   - Click the "Download Markdown" button to save the result
+   - **Optional**: Enter a custom filename in the "File Name" field
+   - Click the "Download Markdown" button to save the result with your chosen name
 
 6. **Start Over**:
    - Click the "Clear" button to reset the interface and convert more files
@@ -122,6 +143,7 @@ http://127.0.0.1:5001
 6. **View and Download Analysis**:
    - The AI-generated analysis will replace the transcripts in the output area
    - The analysis includes all YouTube video URLs as references
+   - **Optional**: Enter a custom filename in the "File Name" field
    - Click the "Download Markdown" button to save the analysis
 
 7. **Start Over**:
@@ -133,8 +155,37 @@ The application supports various file formats through the MarkItDown library, in
 
 - Microsoft Office documents (.docx, .doc, .xlsx, .xls)
 - PDF files
-- Images (png, jpg, jpeg, gif)
+- Images (png, jpg, jpeg, gif) - **AI-powered analysis with multiple provider support**
 - ZIP archives (extracts and converts all files inside)
 - And other formats supported by the MarkItDown library
+
+## AI Provider Capabilities
+
+| Feature | OpenAI (GPT-4o) | DeepSeek | Google (Gemini 2.5 Flash) |
+|---------|----------------|----------|---------------------------|
+| Text Processing | ✅ Excellent | ✅ Fast & Cost-effective | ✅ Very Fast |
+| Image Processing | ✅ GPT-4V | ❌ Not supported yet* | ✅ Gemini Vision |
+| YouTube Summarization | ✅ Comprehensive | ✅ Efficient | ✅ Detailed |
+| Speed | 🟡 Moderate | 🟢 Very Fast | 🟢 Very Fast |
+| Cost | 🟡 Premium | 🟢 Budget-friendly | 🟢 Free tier available |
+
+*DeepSeek-VL2 (vision model) is coming soon to the API
+
+## Getting API Keys
+
+### OpenAI
+1. Visit: https://platform.openai.com/
+2. Sign up/Login and go to API Keys
+3. Create a new API key
+
+### DeepSeek
+1. Visit: https://platform.deepseek.com/
+2. Sign up/Login and go to API Keys
+3. Create a new API key
+
+### Google AI
+1. Visit: https://aistudio.google.com/
+2. Click "Get API key"
+3. Create a new API key
 
 

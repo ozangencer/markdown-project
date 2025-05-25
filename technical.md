@@ -7,7 +7,11 @@ This document provides technical details about the Markdown Converter applicatio
 - **Backend**: Python 3.x with Flask framework
 - **Frontend**: HTML, CSS, JavaScript (vanilla)
 - **File Conversion**: markitdown library
-- **AI Services**: OpenAI API integration (GPT-4o model)
+- **AI Services**: Multi-provider support
+  - OpenAI API (GPT-4o model)
+  - DeepSeek API (DeepSeek-V3 model)
+  - Google Generative AI (Gemini 2.5 Flash Preview)
+- **AI Provider Management**: Abstract factory pattern with modular provider system
 
 ## Application Architecture
 
@@ -15,7 +19,8 @@ The application follows a simple client-server architecture:
 
 1. **Client-side**: Browser-based UI for file uploading and displaying results
 2. **Server-side**: Flask web server that handles requests and performs file conversions
-3. **AI Integration**: OpenAI API connection for image processing and YouTube transcript analysis
+3. **AI Integration**: Multi-provider AI system supporting OpenAI, DeepSeek, and Google APIs
+4. **AI Provider Layer**: Abstracted provider interface allowing runtime switching between AI services
 
 ## Component Breakdown
 
@@ -26,9 +31,11 @@ The backend is implemented in `app.py` using Flask:
 - **Routes**:
   - `/` - Serves the main application page
   - `/convert` - Handles file uploads and conversion (POST)
-  - `/convert-youtube` - Handles YouTube URL transcription (POST)
-  - `/summarize-youtube` - Processes YouTube transcripts using OpenAI for summarization (POST)
+  - `/convert-youtube-multiple` - Handles multiple YouTube URL transcription (POST)
+  - `/summarize-youtube-multiple` - Processes YouTube transcripts using selected AI provider (POST)
+  - `/ai-providers` - GET/POST endpoints for AI provider management
   - `/download/<filename>` - Facilitates downloading converted files
+  - `/download-custom` - Custom filename download endpoint (POST)
 
 - **File Processing**:
   - Uses the `MarkItDown` library to convert uploaded files to Markdown
@@ -38,8 +45,14 @@ The backend is implemented in `app.py` using Flask:
   - Adds source URL references to YouTube transcripts and summaries
 
 - **AI Integration**:
-  - Uses OpenAI's GPT-4o model for analyzing images (via MarkItDown)
-  - Sends YouTube transcripts to OpenAI API for comprehensive summarization and analysis
+  - **Multi-Provider Architecture**: Supports OpenAI, DeepSeek, and Google AI providers
+  - **Runtime Provider Switching**: Users can change AI providers during session
+  - **Provider-Specific Image Processing**: 
+    - OpenAI: Uses GPT-4V via MarkItDown
+    - Google: Uses Gemini Vision API directly
+    - DeepSeek: Text-only (image processing not supported)
+  - **Intelligent Fallback**: Automatic provider detection and error handling
+  - Sends YouTube transcripts to selected AI provider for comprehensive summarization
   - Generates structured markdown content from AI responses
 
 - **Environment Management**:
@@ -48,8 +61,10 @@ The backend is implemented in `app.py` using Flask:
 
 - **Error Handling**:
   - Validates file uploads and API requests
-  - Checks for OpenAI API key presence before making API calls
+  - Checks for AI provider availability before making API calls
+  - Provider-specific error messaging (e.g., DeepSeek image processing limitation)
   - Provides appropriate error responses for various failure scenarios
+  - Graceful degradation when providers are unavailable
 
 ### Frontend (HTML/CSS/JavaScript)
 
@@ -57,8 +72,10 @@ The frontend consists of:
 
 #### HTML (`templates/index.html`)
 - Basic structure for the application interface
+- **AI Provider Selection Interface**: Dropdown and controls for provider switching
 - Tab system for different conversion modes (file upload and YouTube URL)
 - Form for file uploads and YouTube URL input
+- **Custom Filename Input**: User can specify custom names for downloads
 - Information box for API key requirements
 - Loading overlay for processing feedback
 - Display areas for file previews and conversion results
@@ -67,6 +84,8 @@ The frontend consists of:
 - Dark-themed modern UI
 - Responsive design elements
 - Tab-based interface styling
+- **AI Provider Interface Styling**: Provider selection, status indicators
+- **Custom Filename Input Styling**: Form controls and layout
 - Loading spinner and overlay animation
 - Styling for drag-and-drop functionality
 - Button states (normal, hover, disabled)
@@ -74,15 +93,80 @@ The frontend consists of:
 
 #### JavaScript (`static/script.js`)
 - Handles tab switching between conversion modes
+- **AI Provider Management**: Load available providers, auto-switch on dropdown change, status updates
+- **Automatic Provider Switching**: Provider changes instantly when dropdown selection changes
 - Manages drag-and-drop file uploads
 - Manages file type detection and icon display
+- **Custom Filename Handling**: User input validation and custom download logic
 - Tracks current YouTube transcript for summarization
 - Handles transcript conversion and AI summarization
 - Performs asynchronous form submissions
 - Implements loading state with UI feedback
 - Disables controls during processing
 - Updates UI with conversion results
-- Facilitates downloading converted files
+- Facilitates downloading converted files with custom names
+
+## AI Provider Architecture
+
+### Provider System Design
+
+The application implements a modular AI provider system using the Abstract Factory pattern, allowing seamless switching between different AI services.
+
+#### Core Components
+
+1. **AIProvider (Abstract Base Class)**:
+   ```python
+   class AIProvider(ABC):
+       @abstractmethod
+       def is_available(self) -> bool
+       @abstractmethod 
+       def chat_completion(self, messages: list, max_tokens: int = 1500) -> str
+       @abstractmethod
+       def get_client_for_markitdown(self)
+       @abstractmethod
+       def get_model_name(self) -> str
+       @abstractmethod
+       def process_image(self, image_path: str, prompt: str = None) -> str
+   ```
+
+2. **Concrete Provider Implementations**:
+   - **OpenAIProvider**: Uses GPT-4o model, full MarkItDown integration
+   - **DeepSeekProvider**: Uses DeepSeek-V3 model, text-only processing
+   - **GoogleProvider**: Uses Gemini 2.5 Flash Preview, native vision support
+
+3. **AIProviderFactory**: Manages provider instantiation and availability checking
+
+#### Provider-Specific Features
+
+| Provider | Model | Image Processing | MarkItDown Support | Special Features |
+|----------|-------|------------------|-------------------|------------------|
+| OpenAI | GPT-4o | ✅ GPT-4V | ✅ Full | Industry standard |
+| DeepSeek | DeepSeek-V3 | ❌ Text only* | ✅ Compatible | Cost-effective, fast |
+| Google | Gemini 2.5 Flash | ✅ Gemini Vision | ❌ Custom impl. | Native multimodal |
+
+*DeepSeek provides clear error messaging for image processing attempts
+
+#### Image Processing Implementation
+
+**OpenAI & DeepSeek**: Uses MarkItDown with LLM client
+```python
+markitdown = MarkItDown(llm_client=self.client, llm_model=self.model)
+result = markitdown.convert(image_path, llm_prompt=prompt)
+```
+
+**Google**: Direct Gemini Vision API
+```python
+import PIL.Image
+image = PIL.Image.open(image_path)
+response = self.model.generate_content([prompt, image])
+```
+
+#### Runtime Provider Management
+
+- **Dynamic Switching**: Users can change providers during session
+- **Availability Detection**: Automatic checking of API key presence
+- **Graceful Fallback**: Clear error messages when providers unavailable
+- **Status Monitoring**: Real-time provider status in UI
 
 ## Key Implementation Details
 
@@ -112,7 +196,10 @@ Based on the detected type, appropriate icons are displayed:
 #### File Conversion
 1. Files are uploaded to the server using a POST request to `/convert`
 2. The server saves the uploaded file to a temporary location with a unique ID
-3. For image files, OpenAI API is used to generate descriptions (if API key exists)
+3. For image files, the selected AI provider is used to generate descriptions:
+   - **OpenAI**: Uses GPT-4V via MarkItDown integration
+   - **Google**: Uses Gemini Vision API directly with Pillow for image loading
+   - **DeepSeek**: Returns informative error (vision not supported yet)
 4. For ZIP files, the application:
    - Extracts all files to a temporary directory
    - Processes each extracted file individually using the MarkItDown library
@@ -159,8 +246,9 @@ Based on the detected type, appropriate icons are displayed:
 ```
 markdown-project/
 ├── app.py                     # Main Flask application
-├── requirements.txt           # Python dependencies
-├── .env                       # Environment variables (API keys) - not in git
+├── ai_providers.py            # AI provider abstraction layer (NEW)
+├── requirements.txt           # Python dependencies:\n│                              #   - google-generativeai==0.8.3\n│                              #   - Pillow==11.1.0\n│                              #   - (existing: Flask, markitdown, openai, python-dotenv)
+├── .env                       # Environment variables (multiple API keys) - not in git
 ├── .gitignore                 # Git ignore configuration
 ├── README.md                  # Project documentation
 ├── technical.md               # Technical documentation
@@ -171,14 +259,15 @@ markdown-project/
 │   │   ├── image.png          # Image file icon
 │   │   ├── pdf.png            # PDF file icon
 │   │   └── word.png           # Word file icon
-│   ├── script.js              # Frontend JavaScript
-│   └── styles.css             # CSS styles
+│   ├── script.js              # Frontend JavaScript (enhanced)
+│   └── styles.css             # CSS styles (enhanced)
 ├── templates/
-│   └── index.html             # Main HTML template
+│   └── index.html             # Main HTML template (enhanced)
 └── uploads/                   # Directory for Markdown files only (not in git)
     ├── *_[uuid].md            # Generated markdown files from uploaded files
-    ├── youtube_[uuid].md      # YouTube transcript files with source URLs
-    └── youtube_summary_[uuid].md # AI-generated summary files with source URLs
+    ├── youtube_multiple_[uuid].md    # Multiple YouTube transcript files
+    ├── youtube_summary_multiple_[uuid].md # AI-generated summary files
+    └── custom_[uuid]_[filename].md   # Custom named download files
 ```
 
 ## Security Considerations
@@ -229,15 +318,20 @@ The application is designed for simplicity rather than high-volume processing:
    - Configurable sorting options for ZIP file contents
 
 4. **AI Enhancements**:
+   - ✅ **Multi-Provider Support**: OpenAI, DeepSeek, Google Gemini
+   - ✅ **Runtime Provider Switching**: Dynamic AI provider selection
+   - ✅ **Provider-Specific Optimizations**: Tailored processing for each AI service
    - Add sentiment analysis for YouTube videos
    - Implement topic extraction and categorization
    - Create visualization options for transcript analysis
-   - Allow model selection for different use cases
+   - Advanced model selection for different use cases
+   - **Additional Provider Support**: Claude, Llama, etc.
 
 5. **Code Structure**:
-   - Separate application logic into modules
-   - Create API service classes for external services
-   - Add comprehensive error handling
+   - ✅ **Modular AI Provider System**: Abstract factory pattern implementation
+   - ✅ **API Service Classes**: Dedicated provider classes for external services
+   - ✅ **Enhanced Error Handling**: Provider-specific error management
    - Implement logging
    - Add unit and integration tests
    - Create environment-specific configuration files
+   - **Provider Plugin System**: Easy addition of new AI providers
