@@ -324,11 +324,6 @@ markdown-project/
 │   └── styles.css             # CSS styles (enhanced)
 ├── templates/
 │   └── index.html             # Main HTML template (enhanced)
-└── uploads/                   # Directory for Markdown files only (not in git)
-    ├── *_[uuid].md            # Generated markdown files from uploaded files
-    ├── youtube_multiple_[uuid].md    # Multiple YouTube transcript files
-    ├── youtube_summary_multiple_[uuid].md # AI-generated summary files
-    └── custom_[uuid]_[filename].md   # Custom named download files
 ```
 
 ## Security Considerations
