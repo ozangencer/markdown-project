@@ -1,6 +1,5 @@
 from flask import Flask, request, render_template, jsonify, send_file
 from markitdown import MarkItDown
-from openai import OpenAI
 import os
 import uuid
 import mimetypes
@@ -10,6 +9,7 @@ import tempfile
 import shutil
 from pathlib import Path
 from dotenv import load_dotenv
+from ai_providers import AIProviderFactory
 
 # .env dosyasından çevre değişkenlerini yükle
 load_dotenv()
@@ -18,82 +18,149 @@ app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# OpenAI istemcisini yapılandır - API anahtarını .env dosyasından al
-openai_client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-
 @app.route('/')
 def index():
     return render_template('index.html')
 
+@app.route('/ai-providers', methods=['GET'])
+def get_ai_providers():
+    """Get available AI providers and their status"""
+    try:
+        providers = AIProviderFactory.get_available_providers()
+        current_provider = os.getenv('AI_PROVIDER', 'openai').lower()
+        
+        return jsonify({
+            "providers": providers,
+            "current": current_provider
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/ai-providers', methods=['POST'])
+def set_ai_provider():
+    """Set the AI provider to use"""
+    data = request.json
+    if not data or 'provider' not in data:
+        return jsonify({"error": "Provider name is required!"}), 400
+    
+    provider_name = data['provider'].lower()
+    
+    try:
+        # Test if the provider is available
+        ai_provider = AIProviderFactory.get_provider(provider_name)
+        if not ai_provider.is_available():
+            return jsonify({"error": f"Provider '{provider_name}' is not properly configured. Please check your API keys."}), 400
+        
+        # Set environment variable for this session
+        os.environ['AI_PROVIDER'] = provider_name
+        
+        return jsonify({
+            "message": f"AI provider set to '{provider_name}'",
+            "provider": provider_name
+        })
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/convert', methods=['POST'])
 def convert_file():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file uploaded!"}), 400
+    if 'files' not in request.files:
+        return jsonify({"error": "No files uploaded!"}), 400
 
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No file selected!"}), 400
+    files = request.files.getlist('files')
+    if not files or all(f.filename == '' for f in files):
+        return jsonify({"error": "No files selected!"}), 400
 
-    # Geçici bir dosya yolu oluştur
-    temp_filepath = os.path.join(UPLOAD_FOLDER, f"temp_{uuid.uuid4()}_{file.filename}")
-    file.save(temp_filepath)
+    # Process multiple files
+    if len(files) == 1:
+        # Single file processing (existing logic)
+        file = files[0]
+        # Geçici bir dosya yolu oluştur
+        temp_filepath = os.path.join(UPLOAD_FOLDER, f"temp_{uuid.uuid4()}_{file.filename}")
+        file.save(temp_filepath)
 
-    try:
-        # Dosya türünü kontrol et
-        mime_type, _ = mimetypes.guess_type(temp_filepath)
-        is_image = mime_type and mime_type.startswith('image/')
-        is_zip = mime_type == 'application/zip' or file.filename.lower().endswith('.zip')
+        try:
+            # Dosya türünü kontrol et
+            mime_type, _ = mimetypes.guess_type(temp_filepath)
+            is_image = mime_type and mime_type.startswith('image/')
+            is_zip = mime_type == 'application/zip' or file.filename.lower().endswith('.zip')
 
-        # ZIP dosyası ise içeriğini işle
-        if is_zip:
-            return process_zip_file(temp_filepath, file.filename)
+            # ZIP dosyası ise içeriğini işle
+            if is_zip:
+                return process_zip_file(temp_filepath, file.filename)
 
-        # Görüntü dosyası ise OpenAI ile işle
-        if is_image:
-            # API anahtarının ayarlanıp ayarlanmadığını kontrol et
-            try:
-                # API anahtarı ayarlanmamışsa hata verir
-                if not openai_client.api_key:
-                    return jsonify({"error": "OpenAI API key is not set. For image conversion, please set the OPENAI_API_KEY environment variable."}), 400
+            # Görüntü dosyası ise AI ile işle
+            if is_image:
+                # AI provider'ın ayarlanıp ayarlanmadığını kontrol et
+                try:
+                    ai_provider = AIProviderFactory.get_provider()
+                    if not ai_provider.is_available():
+                        return jsonify({"error": "AI provider is not configured. Please set API keys in the .env file."}), 400
 
-                # Görüntü açıklaması için özelleştirilmiş prompt kullan (convert metodunda)
-                custom_prompt = "Bu görselde ne olduğunu detaylı olarak ve Türkçe açıkla. Ana unsurları, renkler ve kompozisyonu belirt. Metin varsa, metni de belirt."
-                markitdown = MarkItDown(llm_client=openai_client, llm_model="gpt-4o")
-            except Exception as e:
-                return jsonify({"error": f"OpenAI error: {str(e)}. Please check your API key."}), 400
-        else:
-            markitdown = MarkItDown()
+                    # Görüntü açıklaması için özelleştirilmiş prompt kullan (convert metodunda)
+                    custom_prompt = """Bu bir profesyonel sunum görseli. Lütfen aşağıdaki yapıda analiz et:
 
-        # Görüntüyse özelleştirilmiş promptu convert metoduna geçir
-        if is_image and openai_client.api_key:
-            result = markitdown.convert(temp_filepath, llm_prompt=custom_prompt)
-        else:
-            result = markitdown.convert(temp_filepath)
+**GÖRSEL TİPİ**: [Gantt Chart / Tablo / SmartArt / Flow Chart / Organizasyon Şeması / Matris / Timeline / Process Diagram / Diğer - hangisi olduğunu belirt]
 
-        # Dosya adı için benzersiz bir ID oluştur
-        unique_id = str(uuid.uuid4())
-        output_filename = f"{os.path.splitext(file.filename)[0]}_{unique_id}.md"
-        output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+**BAŞLIK/KONU**: [Görselin ana konusu veya başlığı]
 
-        # Markdown içeriğini kaydet
-        with open(output_filepath, 'w', encoding='utf-8') as f:
-            f.write(result.text_content)
+**İÇERİK DETAYI**:
+- Tüm metin içeriğini kelimesi kelimesine yaz
+- Tablolarda: Tüm satır ve sütun başlıklarını ve hücre içeriklerini
+- Flow/Process'lerde: Her kutunun içeriğini ve okların yönünü
+- Gantt'larda: Görev adları, tarihler, süreler
+- SmartArt'larda: Her bileşenin metnini hiyerarşik sırayla
 
-        # Geçici dosyayı temizle
-        if os.path.exists(temp_filepath):
-            os.remove(temp_filepath)
+**ANAHTAR KELİMELER**: [Bu görseli aramak için kullanılabilecek kelimeler - proje adları, departmanlar, tarihler, KPI'lar, metrikler]
 
-        # Markdown içeriğini JSON olarak döndür
-        return jsonify({
-            "markdown": result.text_content,
-            "download_url": f"/download/{output_filename}"
-        })
+**BAĞLAM/KULLANIM ALANI**: [Bu görselin hangi bağlamda kullanıldığı - strateji sunumu, proje planı, organizasyon yapısı, vs.]
 
-    except Exception as e:
-        # Hata durumunda geçici dosyayı temizle
-        if 'temp_filepath' in locals() and os.path.exists(temp_filepath):
-            os.remove(temp_filepath)
-        return jsonify({"error": str(e)}), 500
+**ÖNEMLİ DETAYLAR**: [Vurgulanan noktalar, renklerle belirtilen öncelikler, kritik tarihler]"""
+                    
+                    # AI provider'ın process_image metodunu kullan
+                    result_text = ai_provider.process_image(temp_filepath, custom_prompt)
+                    
+                    # MarkItDown result format'ına uygun olarak sarmalama
+                    class ImageResult:
+                        def __init__(self, text):
+                            self.text_content = text
+                    
+                    result = ImageResult(result_text)
+                    
+                except Exception as e:
+                    return jsonify({"error": f"AI provider error: {str(e)}. Please check your API key."}), 400
+            else:
+                markitdown = MarkItDown()
+                result = markitdown.convert(temp_filepath)
+
+            # Dosya adı için benzersiz bir ID oluştur
+            unique_id = str(uuid.uuid4())
+            output_filename = f"{os.path.splitext(file.filename)[0]}_{unique_id}.md"
+            output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+
+            # Markdown içeriğini kaydet
+            with open(output_filepath, 'w', encoding='utf-8') as f:
+                f.write(result.text_content)
+
+            # Geçici dosyayı temizle
+            if os.path.exists(temp_filepath):
+                os.remove(temp_filepath)
+
+            # Markdown içeriğini JSON olarak döndür
+            return jsonify({
+                "markdown": result.text_content,
+                "download_url": f"/download/{output_filename}"
+            })
+
+        except Exception as e:
+            # Hata durumunda geçici dosyayı temizle
+            if 'temp_filepath' in locals() and os.path.exists(temp_filepath):
+                os.remove(temp_filepath)
+            return jsonify({"error": str(e)}), 500
+    
+    else:
+        # Multiple files processing
+        return process_multiple_files(files)
 
 def process_zip_file(zip_filepath, original_filename):
     """
@@ -138,21 +205,43 @@ def process_zip_file(zip_filepath, original_filename):
                 mime_type, _ = mimetypes.guess_type(file_path)
                 is_image = mime_type and mime_type.startswith('image/')
 
-                # Görüntü dosyası ise OpenAI ile işle
+                # Görüntü dosyası ise AI ile işle
                 if is_image:
-                    # API anahtarının varlığını kontrol et
-                    if not openai_client.api_key:
-                        markdown_content += f"\n## {relative_path}\n\n*Bu bir görüntü dosyasıdır ve dönüştürmek için OpenAI API anahtarı gereklidir.*\n\n"
+                    # AI provider'ın varlığını kontrol et
+                    try:
+                        ai_provider = AIProviderFactory.get_provider()
+                        if not ai_provider.is_available():
+                            markdown_content += f"\n## {relative_path}\n\n*Bu bir görüntü dosyasıdır ve dönüştürmek için AI provider ayarlanmış olmalıdır.*\n\n"
+                            continue
+                    except Exception:
+                        markdown_content += f"\n## {relative_path}\n\n*Bu bir görüntü dosyasıdır ve dönüştürmek için AI provider ayarlanmış olmalıdır.*\n\n"
                         continue
 
                     # Görüntü açıklaması için özelleştirilmiş prompt kullan (convert metodunda)
-                    custom_prompt = "Bu görselde ne olduğunu detaylı olarak ve Türkçe açıkla. Ana unsurları, renkler ve kompozisyonu belirt. Metin varsa, metni de belirt."
-                    markitdown = MarkItDown(llm_client=openai_client, llm_model="gpt-4o")
+                    custom_prompt = """Bu bir profesyonel sunum görseli. Lütfen aşağıdaki yapıda analiz et:
+
+**GÖRSEL TİPİ**: [Gantt Chart / Tablo / SmartArt / Flow Chart / Organizasyon Şeması / Matris / Timeline / Process Diagram / Diğer - hangisi olduğunu belirt]
+
+**BAŞLIK/KONU**: [Görselin ana konusu veya başlığı]
+
+**İÇERİK DETAYI**:
+- Tüm metin içeriğini kelimesi kelimesine yaz
+- Tablolarda: Tüm satır ve sütun başlıklarını ve hücre içeriklerini
+- Flow/Process'lerde: Her kutunun içeriğini ve okların yönünü
+- Gantt'larda: Görev adları, tarihler, süreler
+- SmartArt'larda: Her bileşenin metnini hiyerarşik sırayla
+
+**ANAHTAR KELİMELER**: [Bu görseli aramak için kullanılabilecek kelimeler - proje adları, departmanlar, tarihler, KPI'lar, metrikler]
+
+**BAĞLAM/KULLANIM ALANI**: [Bu görselin hangi bağlamda kullanıldığı - strateji sunumu, proje planı, organizasyon yapısı, vs.]
+
+**ÖNEMLİ DETAYLAR**: [Vurgulanan noktalar, renklerle belirtilen öncelikler, kritik tarihler]"""
+                    markitdown = MarkItDown(llm_client=ai_provider.get_client_for_markitdown(), llm_model=ai_provider.get_model_name())
                 else:
                     markitdown = MarkItDown()
 
                 # Dosyayı dönüştür - Görüntüyse özelleştirilmiş promptu convert metoduna geçir
-                if is_image and openai_client.api_key:
+                if is_image and ai_provider.is_available():
                     result = markitdown.convert(file_path, llm_prompt=custom_prompt)
                 else:
                     result = markitdown.convert(file_path)
@@ -178,6 +267,100 @@ def process_zip_file(zip_filepath, original_filename):
         "markdown": markdown_content,
         "download_url": f"/download/{output_filename}"
     })
+
+def process_multiple_files(files):
+    """
+    Process multiple files and combine them into a single Markdown file
+    """
+    markdown_content = "# Converted Files\n\n"
+    temp_files = []
+    
+    try:
+        # Process each file
+        for i, file in enumerate(files, 1):
+            if file.filename == '':
+                continue
+                
+            # Create temporary file path
+            temp_filepath = os.path.join(UPLOAD_FOLDER, f"temp_{uuid.uuid4()}_{file.filename}")
+            file.save(temp_filepath)
+            temp_files.append(temp_filepath)
+            
+            try:
+                # Check file type
+                mime_type, _ = mimetypes.guess_type(temp_filepath)
+                is_image = mime_type and mime_type.startswith('image/')
+                is_zip = mime_type == 'application/zip' or file.filename.lower().endswith('.zip')
+                
+                # Handle ZIP files
+                if is_zip:
+                    # Extract and process ZIP contents
+                    zip_result = process_zip_file(temp_filepath, file.filename)
+                    zip_data = json.loads(zip_result.get_data(as_text=True))
+                    markdown_content += f"\n## File {i}: {file.filename}\n\n{zip_data['markdown']}\n\n---\n\n"
+                    continue
+                
+                # Handle images with AI
+                if is_image:
+                    try:
+                        ai_provider = AIProviderFactory.get_provider()
+                        if not ai_provider.is_available():
+                            markdown_content += f"\n## File {i}: {file.filename}\n\n*This is an image file and requires AI provider configuration for conversion.*\n\n---\n\n"
+                            continue
+                    except Exception:
+                        markdown_content += f"\n## File {i}: {file.filename}\n\n*This is an image file and requires AI provider configuration for conversion.*\n\n---\n\n"
+                        continue
+                    
+                    custom_prompt = """Bu bir profesyonel sunum görseli. Lütfen aşağıdaki yapıda analiz et:
+
+**GÖRSEL TİPİ**: [Gantt Chart / Tablo / SmartArt / Flow Chart / Organizasyon Şeması / Matris / Timeline / Process Diagram / Diğer - hangisi olduğunu belirt]
+
+**BAŞLIK/KONU**: [Görselin ana konusu veya başlığı]
+
+**İÇERİK DETAYI**:
+- Tüm metin içeriğini kelimesi kelimesine yaz
+- Tablolarda: Tüm satır ve sütun başlıklarını ve hücre içeriklerini
+- Flow/Process'lerde: Her kutunun içeriğini ve okların yönünü
+- Gantt'larda: Görev adları, tarihler, süreler
+- SmartArt'larda: Her bileşenin metnini hiyerarşik sırayla
+
+**ANAHTAR KELİMELER**: [Bu görseli aramak için kullanılabilecek kelimeler - proje adları, departmanlar, tarihler, KPI'lar, metrikler]
+
+**BAĞLAM/KULLANIM ALANI**: [Bu görselin hangi bağlamda kullanıldığı - strateji sunumu, proje planı, organizasyon yapısı, vs.]
+
+**ÖNEMLİ DETAYLAR**: [Vurgulanan noktalar, renklerle belirtilen öncelikler, kritik tarihler]"""
+                    markitdown = MarkItDown(llm_client=ai_provider.get_client_for_markitdown(), llm_model=ai_provider.get_model_name())
+                    result = markitdown.convert(temp_filepath, llm_prompt=custom_prompt)
+                else:
+                    markitdown = MarkItDown()
+                    result = markitdown.convert(temp_filepath)
+                
+                # Add to combined markdown
+                markdown_content += f"\n## File {i}: {file.filename}\n\n{result.text_content}\n\n---\n\n"
+                
+            except Exception as e:
+                markdown_content += f"\n## File {i}: {file.filename}\n\n*Conversion error: {str(e)}*\n\n---\n\n"
+        
+        # Save combined markdown
+        unique_id = str(uuid.uuid4())
+        output_filename = f"multiple_files_{unique_id}.md"
+        output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+        
+        with open(output_filepath, 'w', encoding='utf-8') as f:
+            f.write(markdown_content)
+        
+        return jsonify({
+            "markdown": markdown_content,
+            "download_url": f"/download/{output_filename}"
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        # Clean up temporary files
+        for temp_file in temp_files:
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
 
 @app.route('/convert-youtube', methods=['POST'])
 def convert_youtube():
@@ -227,9 +410,10 @@ def summarize_youtube():
         return jsonify({"error": "YouTube URL or transcript is empty!"}), 400
 
     try:
-        # API anahtarının ayarlanıp ayarlanmadığını kontrol et
-        if not openai_client.api_key:
-            return jsonify({"error": "OpenAI API key is not set. Please set it in the .env file."}), 400
+        # AI provider'ın ayarlanıp ayarlanmadığını kontrol et
+        ai_provider = AIProviderFactory.get_provider()
+        if not ai_provider.is_available():
+            return jsonify({"error": "AI provider is not configured. Please set API keys in the .env file."}), 400
 
         # OpenAI API'yi kullanarak transcript'i özetle
         prompt = f"""
@@ -250,18 +434,13 @@ def summarize_youtube():
         Format your response in Markdown with appropriate headings, bullet points, and formatting.
         """
 
-        # ChatGPT API çağrısı
-        response = openai_client.chat.completions.create(
-            model="gpt-4o",  # veya "gpt-3.5-turbo" gibi bir modeli kullanabilirsiniz
-            messages=[
-                {"role": "system", "content": "You are an expert video summarizer that creates well-structured markdown summaries."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=1500
-        )
-
-        # AI tarafından oluşturulan özet
-        summary = response.choices[0].message.content
+        # AI API çağrısı
+        messages = [
+            {"role": "system", "content": "You are an expert video summarizer that creates well-structured markdown summaries."},
+            {"role": "user", "content": prompt}
+        ]
+        
+        summary = ai_provider.chat_completion(messages, max_tokens=1500)
 
         # URL ekleme
         enhanced_summary = f"# AI Summary of YouTube Video\n\n**Source:** {youtube_url}\n\n---\n\n{summary}"
@@ -282,9 +461,167 @@ def summarize_youtube():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/convert-youtube-multiple', methods=['POST'])
+def convert_youtube_multiple():
+    data = request.json
+    if not data or 'urls' not in data:
+        return jsonify({"error": "No YouTube URLs provided!"}), 400
+
+    urls = data['urls']
+    if not urls or not isinstance(urls, list):
+        return jsonify({"error": "URLs must be a list!"}), 400
+
+    markdown_content = "# YouTube Video Transcripts\n\n"
+    transcripts = []
+    
+    try:
+        # Process each YouTube URL
+        for i, url in enumerate(urls, 1):
+            if not url:
+                continue
+            
+            try:
+                # Use MarkItDown to convert YouTube URL to markdown
+                markitdown = MarkItDown()
+                result = markitdown.convert(url)
+                
+                # Add to transcripts list
+                transcript_data = {
+                    "url": url,
+                    "content": result.text_content
+                }
+                transcripts.append(transcript_data)
+                
+                # Add to combined markdown
+                markdown_content += f"## Video {i}: {url}\n\n{result.text_content}\n\n---\n\n"
+                
+            except Exception as e:
+                markdown_content += f"## Video {i}: {url}\n\n*Error converting video: {str(e)}*\n\n---\n\n"
+        
+        # Save combined transcripts
+        unique_id = str(uuid.uuid4())
+        output_filename = f"youtube_multiple_{unique_id}.md"
+        output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+        
+        with open(output_filepath, 'w', encoding='utf-8') as f:
+            f.write(markdown_content)
+        
+        return jsonify({
+            "markdown": markdown_content,
+            "download_url": f"/download/{output_filename}",
+            "transcripts": transcripts
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/summarize-youtube-multiple', methods=['POST'])
+def summarize_youtube_multiple():
+    data = request.json
+    if not data or 'transcripts' not in data:
+        return jsonify({"error": "No transcripts provided!"}), 400
+
+    transcripts = data['transcripts']
+    if not transcripts or not isinstance(transcripts, list):
+        return jsonify({"error": "Transcripts must be a list!"}), 400
+
+    try:
+        # Check AI provider
+        ai_provider = AIProviderFactory.get_provider()
+        if not ai_provider.is_available():
+            return jsonify({"error": "AI provider is not configured. Please set API keys in the .env file."}), 400
+
+        # Prepare prompt for multiple videos
+        prompt = "You are an expert video summarizer and analyzer. Below are transcripts from multiple YouTube videos. Please provide:\n\n"
+        prompt += "1. A brief overview of all videos (2-3 sentences)\n"
+        prompt += "2. Individual summaries for each video\n"
+        prompt += "3. Common themes across all videos\n"
+        prompt += "4. Key takeaways from the collection\n"
+        prompt += "5. Any connections or contrasts between the videos\n\n"
+        prompt += "Videos:\n\n"
+        
+        for i, transcript in enumerate(transcripts, 1):
+            prompt += f"Video {i} ({transcript['url']}):\n{transcript['content']}\n\n"
+        
+        prompt += "\nFormat your response in Markdown with appropriate headings, bullet points, and formatting."
+
+        # AI API call
+        messages = [
+            {"role": "system", "content": "You are an expert video summarizer that creates well-structured markdown summaries for multiple videos."},
+            {"role": "user", "content": prompt}
+        ]
+        
+        summary = ai_provider.chat_completion(messages, max_tokens=2000)
+        
+        # Add URLs to summary
+        enhanced_summary = "# AI Summary of Multiple YouTube Videos\n\n**Sources:**\n"
+        for i, transcript in enumerate(transcripts, 1):
+            enhanced_summary += f"- Video {i}: {transcript['url']}\n"
+        enhanced_summary += f"\n---\n\n{summary}"
+
+        # Save summary
+        unique_id = str(uuid.uuid4())
+        output_filename = f"youtube_summary_multiple_{unique_id}.md"
+        output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+
+        with open(output_filepath, 'w', encoding='utf-8') as f:
+            f.write(enhanced_summary)
+
+        return jsonify({
+            "markdown": enhanced_summary,
+            "download_url": f"/download/{output_filename}"
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/download-custom', methods=['POST'])
+def download_custom():
+    data = request.json
+    if not data or 'content' not in data or 'filename' not in data:
+        return jsonify({"error": "Content and filename are required!"}), 400
+
+    content = data['content']
+    filename = data['filename']
+
+    if not content or not filename:
+        return jsonify({"error": "Content or filename is empty!"}), 400
+
+    try:
+        # Clean filename
+        import re
+        filename = re.sub(r'[^\w\-_.]', '_', filename)
+        if not filename.endswith('.md'):
+            filename += '.md'
+
+        # Create temporary file
+        temp_filepath = os.path.join(UPLOAD_FOLDER, f"custom_{uuid.uuid4()}_{filename}")
+        
+        with open(temp_filepath, 'w', encoding='utf-8') as f:
+            f.write(content)
+
+        # Return file as download
+        response = send_file(temp_filepath, as_attachment=True, download_name=filename)
+        
+        # Clean up the temporary file after sending
+        def remove_file():
+            try:
+                if os.path.exists(temp_filepath):
+                    os.remove(temp_filepath)
+            except:
+                pass
+        
+        response.call_on_close(remove_file)
+        
+        return response
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/download/<filename>')
 def download_file(filename):
     return send_file(os.path.join(UPLOAD_FOLDER, filename), as_attachment=True)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5002)
+    app.run(debug=True, port=5003)

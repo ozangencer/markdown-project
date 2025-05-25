@@ -112,6 +112,62 @@ h1 {
     border-color: #8585ff;
 }
 
+.youtube-urls-list {
+    margin-bottom: 20px;
+}
+
+.youtube-url-input {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+.youtube-url-input input {
+    flex: 1;
+    padding: 12px;
+    font-size: 1rem;
+    border: 2px solid #646cff;
+    border-radius: 5px;
+    background-color: #2e2e40;
+    color: white;
+    box-sizing: border-box;
+}
+
+.youtube-url-input input:focus {
+    outline: none;
+    border-color: #8585ff;
+}
+
+.remove-url-btn {
+    background-color: #ff4444;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.remove-url-btn:hover {
+    background-color: #ff6666;
+}
+
+.add-url-btn {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    margin-bottom: 20px;
+}
+
+.add-url-btn:hover {
+    background-color: #5CBF60;
+}
+
 button {
     background-color: #646cff;
     color: white;
@@ -144,6 +200,37 @@ button:hover {
     font-family: monospace;
 }
 
+.filename-input-section {
+    margin: 15px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.filename-input-section label {
+    font-weight: bold;
+    color: #e0e0e0;
+}
+
+#filenameInput {
+    flex: 1;
+    min-width: 250px;
+    padding: 8px 12px;
+    border: 1px solid #646cff;
+    border-radius: 4px;
+    background-color: #2a2a2a;
+    color: #e0e0e0;
+    font-size: 14px;
+}
+
+#filenameInput:focus {
+    outline: none;
+    border-color: #8585ff;
+    background-color: #333;
+}
+
+
 #downloadButton {
     display: inline-block;
     margin-top: 15px;
@@ -159,21 +246,53 @@ button:hover {
     background-color: #8585ff;
 }
 
-.file-preview {
+.file-preview-list {
+    margin-top: 20px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.file-preview-item {
     display: flex;
     align-items: center;
-    margin-top: 15px;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 10px;
+    background-color: #2e2e40;
+    border-radius: 5px;
+}
+
+.file-info {
+    display: flex;
+    align-items: center;
+    flex: 1;
 }
 
 .file-icon {
-    width: 40px;
-    height: 40px;
+    width: 24px;
+    height: 24px;
     margin-right: 10px;
 }
 
 .file-name {
-    font-size: 1rem;
-    color: #ffffff;
+    color: #aaaaaa;
+    font-size: 0.9rem;
+    flex: 1;
+    text-align: left;
+}
+
+.remove-file-btn {
+    background-color: #ff4444;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.remove-file-btn:hover {
+    background-color: #ff6666;
 }
 
 .button-group {
@@ -252,6 +371,86 @@ button:hover {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* AI Provider Section */
+.ai-provider-section {
+    background-color: #2e2e40;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.ai-provider-section h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #ffffff;
+    font-size: 1.1rem;
+}
+
+.provider-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.provider-controls label {
+    color: #aaaaaa;
+    font-weight: bold;
+}
+
+#aiProviderSelect {
+    padding: 8px 12px;
+    border: 1px solid #646cff;
+    border-radius: 4px;
+    background-color: #1e1e2f;
+    color: #e0e0e0;
+    font-size: 14px;
+    min-width: 150px;
+}
+
+#aiProviderSelect:focus {
+    outline: none;
+    border-color: #8585ff;
+}
+
+#setProviderButton {
+    background-color: #646cff;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+#setProviderButton:hover {
+    background-color: #8585ff;
+}
+
+.provider-status {
+    font-size: 12px;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 3px;
+}
+
+.provider-status.success {
+    color: #4CAF50;
+    background-color: rgba(76, 175, 80, 0.1);
+}
+
+.provider-status.error {
+    color: #ff4444;
+    background-color: rgba(255, 68, 68, 0.1);
+}
+
+.provider-status.loading {
+    color: #646cff;
+    background-color: rgba(100, 108, 255, 0.1);
 }
 
 /* Disabled button styles */

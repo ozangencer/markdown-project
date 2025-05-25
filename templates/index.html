@@ -16,14 +16,28 @@
             <button class="tab-button" id="youtubeTabButton">YouTube URL</button>
         </div>
         <div class="info-box">
-            <p><strong>Note:</strong> For image files, an OpenAI API key must be set in the <code>.env</code> file.</p>
+            <p><strong>Note:</strong> For image files and AI summarization, an AI provider API key must be set in the <code>.env</code> file.</p>
+        </div>
+
+        <div class="ai-provider-section">
+            <h3>AI Provider Settings</h3>
+            <div class="provider-controls">
+                <label for="aiProviderSelect">Choose AI Provider:</label>
+                <select id="aiProviderSelect">
+                    <option value="openai">OpenAI (GPT-4o)</option>
+                    <option value="deepseek">DeepSeek</option>
+                    <option value="google">Google (Gemini 2.5 Flash)</option>
+                </select>
+                <button type="button" id="setProviderButton">Set Provider</button>
+                <span id="providerStatus" class="provider-status"></span>
+            </div>
         </div>
 
         <div id="fileTab" class="tab-content">
             <form id="uploadForm" method="post" enctype="multipart/form-data">
                 <div class="upload-box" id="drop-zone">
-                    <p>Drag and drop your file here or click to upload.</p>
-                    <input type="file" name="file" id="fileInput" hidden>
+                    <p>Drag and drop your files here or click to upload.</p>
+                    <input type="file" name="files" id="fileInput" multiple hidden>
                 </div>
                 <div class="button-group">
                     <button type="submit" id="convertButton">Convert</button>
@@ -31,20 +45,23 @@
                 </div>
             </form>
 
-            <div id="filePreview" class="file-preview" style="display: none;">
-                <img id="fileIcon" class="file-icon" src="" alt="File Icon">
-                <span id="fileName" class="file-name"></span>
+            <div id="filePreview" class="file-preview-list" style="display: none;">
+                <!-- File previews will be dynamically added here -->
             </div>
         </div>
 
         <div id="youtubeTab" class="tab-content" style="display: none;">
             <form id="youtubeForm">
-                <div class="input-group">
-                    <input type="url" id="youtubeUrl" name="youtubeUrl" placeholder="Enter YouTube URL" required>
+                <div id="youtubeUrlsList" class="youtube-urls-list">
+                    <div class="youtube-url-input">
+                        <input type="url" name="youtubeUrl" placeholder="Enter YouTube URL" required>
+                        <button type="button" class="remove-url-btn" style="display: none;">Remove</button>
+                    </div>
                 </div>
+                <button type="button" id="addYoutubeUrl" class="add-url-btn">+ Add Another URL</button>
                 <div class="button-group">
-                    <button type="submit" id="convertYoutubeButton">Convert</button>
-                    <button type="button" id="summarizeYoutubeButton">Summarize with AI</button>
+                    <button type="submit" id="convertYoutubeButton">Convert All</button>
+                    <button type="button" id="summarizeYoutubeButton">Summarize All with AI</button>
                     <button type="button" id="clearYoutubeButton">Clear</button>
                 </div>
             </form>
@@ -58,7 +75,13 @@
         <div id="result">
             <h2>Markdown Output</h2>
             <pre id="markdownContent"></pre>
-            <a id="downloadButton" href="#" style="display: none;">Download Markdown</a>
+            <div id="downloadSection" style="display: none;">
+                <div class="filename-input-section">
+                    <label for="filenameInput">File Name:</label>
+                    <input type="text" id="filenameInput" placeholder="Enter filename (without .md extension)" />
+                </div>
+                <a id="downloadButton" href="#">Download Markdown</a>
+            </div>
         </div>
     </div>
     <script src="/static/script.js"></script>
