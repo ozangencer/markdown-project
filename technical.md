@@ -96,6 +96,8 @@ The frontend consists of:
 - **AI Provider Management**: Load available providers, auto-switch on dropdown change, status updates
 - **Automatic Provider Switching**: Provider changes instantly when dropdown selection changes
 - Manages drag-and-drop file uploads
+- **Clipboard Image Paste**: Handles paste events, converts clipboard images to File objects
+- **File Accumulation System**: Progressive file addition with duplicate prevention
 - Manages file type detection and icon display
 - **Custom Filename Handling**: User input validation and custom download logic
 - Tracks current YouTube transcript for summarization
@@ -172,11 +174,12 @@ response = self.model.generate_content([prompt, image])
 
 ### File Upload Mechanism
 
-The application implements two file upload methods:
+The application implements three file upload methods:
 1. **Drag and Drop**: Files can be dragged directly to the upload area
 2. **Manual Selection**: Clicking the upload area opens a file selection dialog
+3. **Clipboard Paste**: Images can be pasted directly from clipboard using Ctrl+V/Cmd+V
 
-Both methods populate the same file input element in the form.
+All methods populate the same file input element and are seamlessly integrated with the multi-file preview system. The application implements a file accumulation system where new files are added to existing selections without clearing previous choices, with built-in duplicate prevention based on filename and file size.
 
 ### File Type Detection
 
@@ -308,6 +311,8 @@ The application is designed for simplicity rather than high-volume processing:
 3. **Feature Additions**:
    - ✅ Support for ZIP file extraction and conversion
    - ✅ Natural sorting algorithm for numerical filenames
+   - ✅ **Clipboard Image Paste Support**: Direct image paste from clipboard with automatic naming
+   - ✅ **File Accumulation System**: Progressive file selection without auto-clearing, duplicate prevention
    - Support for additional archive formats (RAR, 7z, etc.)
    - Configurable AI summarization options (brief vs detailed, focus areas)
    - Multiple language support for transcripts and summaries

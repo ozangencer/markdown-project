@@ -18,6 +18,9 @@ document.addEventListener("DOMContentLoaded", () => {
     
     // Store selected files
     let selectedFiles = [];
+    
+    // Clipboard paste counter for naming pasted images
+    let pasteCounter = 0;
 
     // YouTube elements
     const youtubeForm = document.getElementById("youtubeForm");
@@ -110,8 +113,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const files = e.dataTransfer.files;
         if (files.length > 0) {
-            fileInput.files = files;
-            displaySelectedFiles(files);
+            addFilesToSelection(Array.from(files));
         }
     });
 
@@ -119,14 +121,36 @@ document.addEventListener("DOMContentLoaded", () => {
     fileInput.addEventListener("change", () => {
         const files = fileInput.files;
         if (files.length > 0) {
-            displaySelectedFiles(files);
+            addFilesToSelection(Array.from(files));
+            // Clear the input so the same file can be selected again if needed
+            fileInput.value = '';
         }
     });
     
+    // Add new files to existing selection
+    function addFilesToSelection(newFiles) {
+        // Add new files to existing selection, avoiding duplicates based on name and size
+        newFiles.forEach(newFile => {
+            const isDuplicate = selectedFiles.some(existingFile => 
+                existingFile.name === newFile.name && existingFile.size === newFile.size
+            );
+            if (!isDuplicate) {
+                selectedFiles.push(newFile);
+            }
+        });
+        
+        updateFileInput();
+        displaySelectedFiles();
+    }
+    
     // Display selected files with preview
-    function displaySelectedFiles(files) {
-        selectedFiles = Array.from(files);
+    function displaySelectedFiles() {
         filePreview.innerHTML = '';
+        if (selectedFiles.length === 0) {
+            filePreview.style.display = 'none';
+            return;
+        }
+        
         filePreview.style.display = 'block';
         
         selectedFiles.forEach((file, index) => {
@@ -148,7 +172,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const index = parseInt(e.target.getAttribute('data-index'));
                 selectedFiles.splice(index, 1);
                 updateFileInput();
-                displaySelectedFiles(selectedFiles);
+                displaySelectedFiles();
             });
         });
     }
@@ -510,6 +534,52 @@ document.addEventListener("DOMContentLoaded", () => {
     setProviderButton.addEventListener("click", async () => {
         const selectedProvider = aiProviderSelect.value;
         await setProvider(selectedProvider);
+    });
+
+    // Clipboard paste functionality
+    document.addEventListener("paste", (e) => {
+        // Only handle paste events when file tab is active
+        if (fileTab.style.display === "none") return;
+        
+        const clipboardItems = e.clipboardData?.items;
+        if (!clipboardItems) return;
+        
+        // Look for image items in clipboard
+        for (let i = 0; i < clipboardItems.length; i++) {
+            const item = clipboardItems[i];
+            
+            if (item.type.startsWith('image/')) {
+                e.preventDefault(); // Prevent default paste behavior
+                
+                const blob = item.getAsFile();
+                if (blob) {
+                    // Create a File object from the blob with a descriptive name
+                    pasteCounter++;
+                    const timestamp = new Date().toISOString().replace(/[:]/g, '-').split('.')[0];
+                    const extension = item.type.split('/')[1] || 'png';
+                    const fileName = `pasted-image-${pasteCounter}-${timestamp}.${extension}`;
+                    
+                    const file = new File([blob], fileName, { type: item.type });
+                    
+                    // Add to selected files using the same function
+                    addFilesToSelection([file]);
+                    
+                    // Show visual feedback
+                    dropZone.style.borderColor = "#4ade80";
+                    setTimeout(() => {
+                        dropZone.style.borderColor = "#646cff";
+                    }, 1000);
+                }
+                break; // Only handle the first image found
+            }
+        }
+    });
+    
+    // Add visual hint for paste functionality
+    dropZone.addEventListener("mouseenter", () => {
+        if (fileTab.style.display !== "none") {
+            dropZone.title = "Drop files here, click to select, or paste images from clipboard (Ctrl+V / Cmd+V)";
+        }
     });
 
     // Load AI providers on page load

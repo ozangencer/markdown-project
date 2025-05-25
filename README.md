@@ -10,6 +10,7 @@ This application allows users to easily convert different file types to Markdown
 
 - Convert various file formats to Markdown
 - **Multiple file conversion** - Convert multiple files at once into a single Markdown document
+- **File accumulation system** - Add files progressively without losing previous selections
 - YouTube video transcription to Markdown with source URL reference
 - **Multiple YouTube URL processing** - Convert multiple YouTube videos in one operation
 - AI-powered summarization and analysis of YouTube video transcripts
@@ -20,6 +21,7 @@ This application allows users to easily convert different file types to Markdown
 - ZIP file processing with automatic extraction and conversion of all contents
 - Natural sorting for extracted files with numerical names (e.g., "Slide1.png" before "Slide2.png")
 - Drag-and-drop file upload interface with multi-file support
+- **Clipboard image paste support** - Paste images directly from clipboard (screenshots, copied images)
 - Visual file type recognition with custom icons
 - Individual file preview and removal before conversion
 - Preview of converted Markdown content
@@ -90,13 +92,16 @@ http://127.0.0.1:5003
 
 2. **Upload Files**:
    - Drag and drop one or more files onto the upload area, or
-   - Click the upload area to select files from your system
-   - You can select multiple files at once
+   - Click the upload area to select files from your system, or
+   - **Paste images from clipboard** using Ctrl+V (Windows/Linux) or Cmd+V (Mac)
+   - You can select multiple files at once and combine with pasted images
 
 3. **Manage Selected Files**:
    - View all selected files in the preview list
+   - **Files accumulate**: New files are added to existing selection (no auto-clear)
    - Remove individual files by clicking the "Remove" button next to each file
-   - Add more files by dragging or selecting again
+   - **Duplicate prevention**: Same files (name + size) won't be added twice
+   - Add more files by dragging, selecting, or pasting
 
 4. **Convert the Files**:
    - Click the "Convert" button to start the conversion process
