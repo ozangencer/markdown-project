@@ -18,6 +18,29 @@ app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# Archive extensions that should be extracted like ZIP files
+ARCHIVE_EXTENSIONS = {
+    '.zip': 'zip',
+    '.panda': 'zip',  # .panda files are treated as ZIP archives
+    # Add more extensions here as needed
+    # '.rar': 'rar',
+    # '.7z': '7z',
+}
+
+def is_archive_file(filename):
+    """
+    Check if a file is an archive that should be extracted
+    """
+    file_extension = os.path.splitext(filename.lower())[1]
+    return file_extension in ARCHIVE_EXTENSIONS
+
+def get_archive_type(filename):
+    """
+    Get the archive type for a given filename
+    """
+    file_extension = os.path.splitext(filename.lower())[1]
+    return ARCHIVE_EXTENSIONS.get(file_extension, 'unknown')
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -76,18 +99,29 @@ def convert_file():
         # Single file processing (existing logic)
         file = files[0]
         # Geçici bir dosya yolu oluştur
-        temp_filepath = os.path.join(UPLOAD_FOLDER, f"temp_{uuid.uuid4()}_{file.filename}")
+        temp_id = str(uuid.uuid4())
+        
+        # Dosya adında klasör yapısı varsa oluştur
+        if '/' in file.filename:
+            # Klasör yapısını korumak için güvenli bir yol oluştur
+            safe_filename = file.filename.replace('/', '_')
+            temp_filepath = os.path.join(UPLOAD_FOLDER, f"temp_{temp_id}_{safe_filename}")
+        else:
+            temp_filepath = os.path.join(UPLOAD_FOLDER, f"temp_{temp_id}_{file.filename}")
+        
         file.save(temp_filepath)
 
         try:
             # Dosya türünü kontrol et
             mime_type, _ = mimetypes.guess_type(temp_filepath)
             is_image = mime_type and mime_type.startswith('image/')
-            is_zip = mime_type == 'application/zip' or file.filename.lower().endswith('.zip')
-
-            # ZIP dosyası ise içeriğini işle
-            if is_zip:
-                return process_zip_file(temp_filepath, file.filename)
+            
+            # Archive dosyası ise içeriğini işle
+            if is_archive_file(file.filename):
+                archive_type = get_archive_type(file.filename)
+                if archive_type == 'zip':
+                    return process_zip_file(temp_filepath, file.filename)
+                # Gelecekte diğer archive türleri için buraya eklenebilir
 
             # Görüntü dosyası ise AI ile işle
             if is_image:
@@ -179,12 +213,22 @@ def process_zip_file(zip_filepath, original_filename):
         if os.path.exists(zip_filepath):
             os.remove(zip_filepath)
 
-        # Çıkarılan dosyaları işle
+        # Çıkarılan dosyaları işle (gizli dosyaları hariç tut)
         extracted_files = []
         for root, _, files in os.walk(temp_dir):
             for filename in files:
+                # Gizli dosyaları (. ile başlayanları) ve sistem dosyalarını atla
+                if filename.startswith('.') or filename.startswith('__'):
+                    continue
+                
                 file_path = os.path.join(root, filename)
                 relative_path = os.path.relpath(file_path, temp_dir)
+                
+                # Relative path'te gizli klasör var mı kontrol et
+                path_parts = relative_path.split(os.sep)
+                if any(part.startswith('.') or part.startswith('__') for part in path_parts):
+                    continue
+                    
                 extracted_files.append((file_path, relative_path))
 
         # Dosyaları doğal sıralamaya göre sırala (numaralandırılmış dosyalar için)
@@ -282,7 +326,15 @@ def process_multiple_files(files):
                 continue
                 
             # Create temporary file path
-            temp_filepath = os.path.join(UPLOAD_FOLDER, f"temp_{uuid.uuid4()}_{file.filename}")
+            temp_id = str(uuid.uuid4())
+            
+            # Dosya adında klasör yapısı varsa güvenli hale getir
+            if '/' in file.filename:
+                safe_filename = file.filename.replace('/', '_')
+                temp_filepath = os.path.join(UPLOAD_FOLDER, f"temp_{temp_id}_{safe_filename}")
+            else:
+                temp_filepath = os.path.join(UPLOAD_FOLDER, f"temp_{temp_id}_{file.filename}")
+            
             file.save(temp_filepath)
             temp_files.append(temp_filepath)
             
@@ -290,14 +342,15 @@ def process_multiple_files(files):
                 # Check file type
                 mime_type, _ = mimetypes.guess_type(temp_filepath)
                 is_image = mime_type and mime_type.startswith('image/')
-                is_zip = mime_type == 'application/zip' or file.filename.lower().endswith('.zip')
                 
-                # Handle ZIP files
-                if is_zip:
-                    # Extract and process ZIP contents
-                    zip_result = process_zip_file(temp_filepath, file.filename)
-                    zip_data = json.loads(zip_result.get_data(as_text=True))
-                    markdown_content += f"\n## File {i}: {file.filename}\n\n{zip_data['markdown']}\n\n---\n\n"
+                # Handle archive files
+                if is_archive_file(file.filename):
+                    archive_type = get_archive_type(file.filename)
+                    if archive_type == 'zip':
+                        # Extract and process ZIP contents
+                        zip_result = process_zip_file(temp_filepath, file.filename)
+                        zip_data = json.loads(zip_result.get_data(as_text=True))
+                        markdown_content += f"\n## File {i}: {file.filename}\n\n{zip_data['markdown']}\n\n---\n\n"
                     continue
                 
                 # Handle images with AI
@@ -692,4 +745,4 @@ def download_file(filename):
     return send_file(os.path.join(UPLOAD_FOLDER, filename), as_attachment=True)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5004)
+    app.run(debug=True, port=5005)

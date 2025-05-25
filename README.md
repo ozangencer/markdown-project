@@ -19,7 +19,8 @@ This application allows users to easily convert different file types to Markdown
 - **Multi-AI Provider Support** - Choose between OpenAI, DeepSeek, and Google Gemini
 - Image to Markdown conversion using AI with multiple provider options
 - **Custom filename support** - Set custom names for downloaded Markdown files
-- ZIP file processing with automatic extraction and conversion of all contents
+- **Archive file processing** - ZIP files and other archive formats (like .panda) with automatic extraction and conversion of all contents
+- **Folder drop support** - Drag and drop entire folders to convert all files inside recursively
 - Natural sorting for extracted files with numerical names (e.g., "Slide1.png" before "Slide2.png")
 - Drag-and-drop file upload interface with multi-file support
 - **Clipboard image paste support** - Paste images directly from clipboard (screenshots, copied images)
@@ -93,9 +94,10 @@ http://127.0.0.1:5003
 
 2. **Upload Files**:
    - Drag and drop one or more files onto the upload area, or
+   - **Drag and drop entire folders** to automatically include all files inside, or
    - Click the upload area to select files from your system, or
    - **Paste images from clipboard** using Ctrl+V (Windows/Linux) or Cmd+V (Mac)
-   - You can select multiple files at once and combine with pasted images
+   - You can select multiple files at once and combine with pasted images and folder contents
 
 3. **Manage Selected Files**:
    - View all selected files in the preview list
@@ -171,7 +173,8 @@ The application supports various file formats through the MarkItDown library, in
 - Microsoft Office documents (.docx, .doc, .xlsx, .xls)
 - PDF files
 - Images (png, jpg, jpeg, gif) - **AI-powered analysis with multiple provider support**
-- ZIP archives (extracts and converts all files inside)
+- **Archive files** (ZIP, .panda and other configured formats - extracts and converts all files inside, excluding hidden files)
+- **Folders** (drag and drop entire folders to process all contents recursively)
 - And other formats supported by the MarkItDown library
 
 ## AI Provider Capabilities

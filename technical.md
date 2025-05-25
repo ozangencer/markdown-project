@@ -99,6 +99,7 @@ The frontend consists of:
 - Manages drag-and-drop file uploads
 - **Clipboard Image Paste**: Handles paste events, converts clipboard images to File objects
 - **File Accumulation System**: Progressive file addition with duplicate prevention
+- **Folder Drop Processing**: Recursively reads directory contents using webkitGetAsEntry() API
 - **Custom AI Restructuring**: Modal interface for user-defined prompts, API integration
 - Manages file type detection and icon display
 - **Custom Filename Handling**: User input validation and custom download logic
@@ -176,12 +177,15 @@ response = self.model.generate_content([prompt, image])
 
 ### File Upload Mechanism
 
-The application implements three file upload methods:
+The application implements four file upload methods:
 1. **Drag and Drop**: Files can be dragged directly to the upload area
-2. **Manual Selection**: Clicking the upload area opens a file selection dialog
-3. **Clipboard Paste**: Images can be pasted directly from clipboard using Ctrl+V/Cmd+V
+2. **Folder Drop**: Entire folders can be dragged to automatically include all contents recursively
+3. **Manual Selection**: Clicking the upload area opens a file selection dialog
+4. **Clipboard Paste**: Images can be pasted directly from clipboard using Ctrl+V/Cmd+V
 
 All methods populate the same file input element and are seamlessly integrated with the multi-file preview system. The application implements a file accumulation system where new files are added to existing selections without clearing previous choices, with built-in duplicate prevention based on filename and file size.
+
+**Folder Drop Implementation**: Uses the modern File System Access API with `webkitGetAsEntry()` to recursively read directory contents. When a folder is dropped, the system automatically extracts all files from subdirectories, preserving relative path information in filenames to maintain file organization context.
 
 ### File Type Detection
 
@@ -205,8 +209,10 @@ Based on the detected type, appropriate icons are displayed:
    - **OpenAI**: Uses GPT-4V via MarkItDown integration
    - **Google**: Uses Gemini Vision API directly with Pillow for image loading
    - **DeepSeek**: Returns informative error (vision not supported yet)
-4. For ZIP files, the application:
+4. For archive files (ZIP, .panda, etc.), the application:
+   - **Configurable archive support**: Uses ARCHIVE_EXTENSIONS dictionary to define supported formats
    - Extracts all files to a temporary directory
+   - **Hidden file filtering**: Automatically excludes hidden files and directories (starting with . or __)
    - Processes each extracted file individually using the MarkItDown library
    - Uses natural sorting algorithm to order files numerically (e.g., "Slide1" before "Slide2")
    - Combines all conversions into a single Markdown file with proper headings
@@ -311,11 +317,13 @@ The application is designed for simplicity rather than high-volume processing:
    - Optimize OpenAI prompts for faster responses
 
 3. **Feature Additions**:
-   - ✅ Support for ZIP file extraction and conversion
+   - ✅ **Configurable Archive Support**: ZIP, .panda and extensible support for additional archive formats
+   - ✅ **Hidden File Filtering**: Automatic exclusion of hidden files and system files from archives
    - ✅ Natural sorting algorithm for numerical filenames
    - ✅ **Clipboard Image Paste Support**: Direct image paste from clipboard with automatic naming
    - ✅ **File Accumulation System**: Progressive file selection without auto-clearing, duplicate prevention
    - ✅ **Custom AI Restructuring**: User-defined prompts for content restructuring with modal interface
+   - ✅ **Folder Drop Support**: Drag and drop entire folders to process all contents recursively
    - Support for additional archive formats (RAR, 7z, etc.)
    - Configurable AI summarization options (brief vs detailed, focus areas)
    - Multiple language support for transcripts and summaries

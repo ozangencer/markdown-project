@@ -1,3 +1,49 @@
+// Klasör içeriğini recursively okuma fonksiyonu
+async function readDirectoryRecursively(directoryEntry) {
+    const files = [];
+    
+    return new Promise((resolve, reject) => {
+        const directoryReader = directoryEntry.createReader();
+        
+        function readEntries() {
+            directoryReader.readEntries(async (entries) => {
+                if (entries.length === 0) {
+                    resolve(files);
+                    return;
+                }
+                
+                for (const entry of entries) {
+                    if (entry.isFile) {
+                        try {
+                            const file = await new Promise((resolveFile) => {
+                                entry.file(resolveFile);
+                            });
+                            // Klasör yolu bilgisini dosya adına ekle
+                            const relativePath = entry.fullPath.substring(1); // Remove leading slash
+                            const newFile = new File([file], relativePath, { type: file.type });
+                            files.push(newFile);
+                        } catch (error) {
+                            console.warn(`Could not read file: ${entry.name}`, error);
+                        }
+                    } else if (entry.isDirectory) {
+                        try {
+                            const subFiles = await readDirectoryRecursively(entry);
+                            files.push(...subFiles);
+                        } catch (error) {
+                            console.warn(`Could not read directory: ${entry.name}`, error);
+                        }
+                    }
+                }
+                
+                // Continue reading more entries if they exist
+                readEntries();
+            }, reject);
+        }
+        
+        readEntries();
+    });
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     // Tab switching elements
     const fileTabButton = document.getElementById("fileTabButton");
@@ -115,13 +161,44 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Dosya sürükleyip bırakıldığında işleme alınır
-    dropZone.addEventListener("drop", (e) => {
+    dropZone.addEventListener("drop", async (e) => {
         e.preventDefault();
         dropZone.style.borderColor = "#646cff";
 
-        const files = e.dataTransfer.files;
+        const items = e.dataTransfer.items;
+        const files = [];
+        
+        // Modern browser support için DataTransferItem kullan
+        if (items) {
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                if (item.kind === 'file') {
+                    const entry = item.webkitGetAsEntry();
+                    if (entry) {
+                        if (entry.isDirectory) {
+                            // Klasör ise, içindeki tüm dosyaları recursively al
+                            const folderFiles = await readDirectoryRecursively(entry);
+                            files.push(...folderFiles);
+                        } else if (entry.isFile) {
+                            // Normal dosya ise
+                            const file = item.getAsFile();
+                            if (file) files.push(file);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Fallback: eski yöntem
+        if (files.length === 0) {
+            const dtFiles = e.dataTransfer.files;
+            if (dtFiles.length > 0) {
+                files.push(...Array.from(dtFiles));
+            }
+        }
+
         if (files.length > 0) {
-            addFilesToSelection(Array.from(files));
+            addFilesToSelection(files);
         }
     });
 
