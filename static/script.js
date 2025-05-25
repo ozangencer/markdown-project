@@ -29,6 +29,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const clearYoutubeButton = document.getElementById("clearYoutubeButton");
     const summarizeYoutubeButton = document.getElementById("summarizeYoutubeButton");
     
+    // Restructure elements
+    const restructureFileButton = document.getElementById("restructureFileButton");
+    const restructureYoutubeButton = document.getElementById("restructureYoutubeButton");
+    const promptModal = document.getElementById("promptModal");
+    const customPrompt = document.getElementById("customPrompt");
+    const executePromptButton = document.getElementById("executePromptButton");
+    const cancelPromptButton = document.getElementById("cancelPromptButton");
+    
     // AI Provider elements
     const aiProviderSelect = document.getElementById("aiProviderSelect");
     const setProviderButton = document.getElementById("setProviderButton");
@@ -203,6 +211,8 @@ document.addEventListener("DOMContentLoaded", () => {
         convertButton.disabled = true;
         convertYoutubeButton.disabled = true;
         summarizeYoutubeButton.disabled = true;
+        restructureFileButton.disabled = true;
+        restructureYoutubeButton.disabled = true;
         clearButton.disabled = true;
         clearYoutubeButton.disabled = true;
     };
@@ -212,7 +222,15 @@ document.addEventListener("DOMContentLoaded", () => {
         // Butonları tekrar aktif et
         convertButton.disabled = false;
         convertYoutubeButton.disabled = false;
-        summarizeYoutubeButton.disabled = false;
+        // Sadece content varsa restructure butonlarını aktif et
+        if (currentMarkdownContent) {
+            restructureFileButton.disabled = false;
+            restructureYoutubeButton.disabled = false;
+        }
+        // Sadece transcript varsa summarize butonunu aktif et
+        if (youtubeTranscripts && youtubeTranscripts.length > 0) {
+            summarizeYoutubeButton.disabled = false;
+        }
         clearButton.disabled = false;
         clearYoutubeButton.disabled = false;
     };
@@ -221,11 +239,21 @@ document.addEventListener("DOMContentLoaded", () => {
     uploadForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
+        // Check if we have selected files
+        if (selectedFiles.length === 0) {
+            alert('Please select at least one file to convert.');
+            return;
+        }
+
         // Yükleme durumunu göster
         showLoading();
 
         try {
-            const formData = new FormData(uploadForm);
+            // Create FormData and manually add selected files
+            const formData = new FormData();
+            selectedFiles.forEach(file => {
+                formData.append('files', file);
+            });
             const response = await fetch("/convert", {
                 method: "POST",
                 body: formData,
@@ -238,6 +266,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 markdownContent.textContent = result.markdown;
                 downloadSection.style.display = "block";
                 filenameInput.value = "";
+                
+                // Enable restructure button for files
+                restructureFileButton.disabled = false;
             } else {
                 const error = await response.json();
                 markdownContent.textContent = `Error: ${error.error}`;
@@ -290,18 +321,21 @@ document.addEventListener("DOMContentLoaded", () => {
                 downloadSection.style.display = "block";
                 filenameInput.value = "";
 
-                // Enable summarize button if we have transcripts
+                // Enable summarize and restructure buttons if we have transcripts
                 if (youtubeTranscripts.length > 0) {
                     summarizeYoutubeButton.disabled = false;
+                    restructureYoutubeButton.disabled = false;
                 }
             } else {
                 const error = await response.json();
                 markdownContent.textContent = `Error: ${error.error}`;
                 summarizeYoutubeButton.disabled = true;
+                restructureYoutubeButton.disabled = true;
             }
         } catch (error) {
             markdownContent.textContent = `Error: ${error.message}`;
             summarizeYoutubeButton.disabled = true;
+            restructureYoutubeButton.disabled = true;
         } finally {
             // İşlem bittiğinde yükleme durumunu gizle
             hideLoading();
@@ -319,6 +353,7 @@ document.addEventListener("DOMContentLoaded", () => {
         filenameInput.value = "";
         currentMarkdownContent = "";
         currentDownloadUrl = "";
+        restructureFileButton.disabled = true;
     });
 
     // YouTube form clear butonu
@@ -335,6 +370,7 @@ document.addEventListener("DOMContentLoaded", () => {
         filenameInput.value = "";
         youtubeTranscripts = [];
         summarizeYoutubeButton.disabled = true;
+        restructureYoutubeButton.disabled = true;
         currentMarkdownContent = "";
         currentDownloadUrl = "";
     });
@@ -579,6 +615,97 @@ document.addEventListener("DOMContentLoaded", () => {
     dropZone.addEventListener("mouseenter", () => {
         if (fileTab.style.display !== "none") {
             dropZone.title = "Drop files here, click to select, or paste images from clipboard (Ctrl+V / Cmd+V)";
+        }
+    });
+
+    // Restructure functionality
+    let currentRestructureType = null; // 'file' or 'youtube'
+    
+    // Show prompt modal for restructuring
+    function showPromptModal(type) {
+        currentRestructureType = type;
+        customPrompt.value = '';
+        promptModal.style.display = 'flex';
+        customPrompt.focus();
+    }
+    
+    // Hide prompt modal
+    function hidePromptModal() {
+        promptModal.style.display = 'none';
+        currentRestructureType = null;
+    }
+    
+    // Restructure File button
+    restructureFileButton.addEventListener("click", () => {
+        if (!currentMarkdownContent) {
+            alert('Please convert some files first.');
+            return;
+        }
+        showPromptModal('file');
+    });
+    
+    // Restructure YouTube button
+    restructureYoutubeButton.addEventListener("click", () => {
+        if (!currentMarkdownContent) {
+            alert('Please convert some YouTube videos first.');
+            return;
+        }
+        showPromptModal('youtube');
+    });
+    
+    // Cancel prompt button
+    cancelPromptButton.addEventListener("click", hidePromptModal);
+    
+    // Close modal when clicking outside
+    promptModal.addEventListener("click", (e) => {
+        if (e.target === promptModal) {
+            hidePromptModal();
+        }
+    });
+    
+    // Execute custom prompt
+    executePromptButton.addEventListener("click", async () => {
+        const prompt = customPrompt.value.trim();
+        if (!prompt) {
+            alert('Please enter a prompt.');
+            return;
+        }
+        
+        if (!currentMarkdownContent) {
+            alert('No content available for restructuring.');
+            return;
+        }
+        
+        hidePromptModal();
+        showLoading();
+        
+        try {
+            const response = await fetch("/restructure", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    content: currentMarkdownContent,
+                    prompt: prompt
+                }),
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                currentMarkdownContent = result.markdown;
+                currentDownloadUrl = result.download_url;
+                markdownContent.textContent = result.markdown;
+                downloadSection.style.display = "block";
+                filenameInput.value = "";
+            } else {
+                const error = await response.json();
+                markdownContent.textContent = `Error: ${error.error}`;
+            }
+        } catch (error) {
+            markdownContent.textContent = `Error: ${error.message}`;
+        } finally {
+            hideLoading();
         }
     });
 

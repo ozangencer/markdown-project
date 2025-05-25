@@ -33,6 +33,7 @@ The backend is implemented in `app.py` using Flask:
   - `/convert` - Handles file uploads and conversion (POST)
   - `/convert-youtube-multiple` - Handles multiple YouTube URL transcription (POST)
   - `/summarize-youtube-multiple` - Processes YouTube transcripts using selected AI provider (POST)
+  - `/restructure` - Custom AI restructuring with user-defined prompts (POST)
   - `/ai-providers` - GET/POST endpoints for AI provider management
   - `/download/<filename>` - Facilitates downloading converted files
   - `/download-custom` - Custom filename download endpoint (POST)
@@ -98,6 +99,7 @@ The frontend consists of:
 - Manages drag-and-drop file uploads
 - **Clipboard Image Paste**: Handles paste events, converts clipboard images to File objects
 - **File Accumulation System**: Progressive file addition with duplicate prevention
+- **Custom AI Restructuring**: Modal interface for user-defined prompts, API integration
 - Manages file type detection and icon display
 - **Custom Filename Handling**: User input validation and custom download logic
 - Tracks current YouTube transcript for summarization
@@ -313,6 +315,7 @@ The application is designed for simplicity rather than high-volume processing:
    - ✅ Natural sorting algorithm for numerical filenames
    - ✅ **Clipboard Image Paste Support**: Direct image paste from clipboard with automatic naming
    - ✅ **File Accumulation System**: Progressive file selection without auto-clearing, duplicate prevention
+   - ✅ **Custom AI Restructuring**: User-defined prompts for content restructuring with modal interface
    - Support for additional archive formats (RAR, 7z, etc.)
    - Configurable AI summarization options (brief vs detailed, focus areas)
    - Multiple language support for transcripts and summaries

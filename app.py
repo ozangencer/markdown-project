@@ -307,11 +307,8 @@ def process_multiple_files(files):
                         if not ai_provider.is_available():
                             markdown_content += f"\n## File {i}: {file.filename}\n\n*This is an image file and requires AI provider configuration for conversion.*\n\n---\n\n"
                             continue
-                    except Exception:
-                        markdown_content += f"\n## File {i}: {file.filename}\n\n*This is an image file and requires AI provider configuration for conversion.*\n\n---\n\n"
-                        continue
-                    
-                    custom_prompt = """Bu bir profesyonel sunum görseli. Lütfen aşağıdaki yapıda analiz et:
+                            
+                        custom_prompt = """Bu bir profesyonel sunum görseli. Lütfen aşağıdaki yapıda analiz et:
 
 **GÖRSEL TİPİ**: [Gantt Chart / Tablo / SmartArt / Flow Chart / Organizasyon Şeması / Matris / Timeline / Process Diagram / Diğer - hangisi olduğunu belirt]
 
@@ -329,8 +326,20 @@ def process_multiple_files(files):
 **BAĞLAM/KULLANIM ALANI**: [Bu görselin hangi bağlamda kullanıldığı - strateji sunumu, proje planı, organizasyon yapısı, vs.]
 
 **ÖNEMLİ DETAYLAR**: [Vurgulanan noktalar, renklerle belirtilen öncelikler, kritik tarihler]"""
-                    markitdown = MarkItDown(llm_client=ai_provider.get_client_for_markitdown(), llm_model=ai_provider.get_model_name())
-                    result = markitdown.convert(temp_filepath, llm_prompt=custom_prompt)
+                        
+                        # AI provider'ın process_image metodunu kullan (single file ile aynı)
+                        result_text = ai_provider.process_image(temp_filepath, custom_prompt)
+                        
+                        # MarkItDown result format'ına uygun olarak sarmalama
+                        class ImageResult:
+                            def __init__(self, text):
+                                self.text_content = text
+                        
+                        result = ImageResult(result_text)
+                        
+                    except Exception as e:
+                        markdown_content += f"\n## File {i}: {file.filename}\n\n*AI processing error: {str(e)}*\n\n---\n\n"
+                        continue
                 else:
                     markitdown = MarkItDown()
                     result = markitdown.convert(temp_filepath)
@@ -575,6 +584,65 @@ def summarize_youtube_multiple():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/restructure', methods=['POST'])
+def restructure_content():
+    """
+    Restructure existing content using custom user prompt
+    """
+    data = request.json
+    if not data or 'content' not in data or 'prompt' not in data:
+        return jsonify({"error": "Content and custom prompt are required!"}), 400
+
+    content = data['content']
+    custom_prompt = data['prompt']
+
+    if not content or not custom_prompt:
+        return jsonify({"error": "Content or prompt is empty!"}), 400
+
+    try:
+        # AI provider'ın ayarlanıp ayarlanmadığını kontrol et
+        ai_provider = AIProviderFactory.get_provider()
+        if not ai_provider.is_available():
+            return jsonify({"error": "AI provider is not configured. Please set API keys in the .env file."}), 400
+
+        # Custom prompt ile AI API çağrısı
+        prompt = f"""
+        You are an AI assistant that helps restructure and reformat content based on user requirements.
+        
+        User's custom request: {custom_prompt}
+        
+        Content to restructure:
+        {content}
+        
+        Please follow the user's request exactly and format your response in Markdown with appropriate headings, bullet points, and formatting.
+        """
+
+        # AI API çağrısı
+        messages = [
+            {"role": "system", "content": "You are an expert content restructurer that follows user instructions precisely and creates well-structured markdown content."},
+            {"role": "user", "content": prompt}
+        ]
+        
+        restructured_content = ai_provider.chat_completion(messages, max_tokens=2000)
+
+        # Add header with user prompt
+        enhanced_content = f"# AI Restructured Content\n\n**User Request:** {custom_prompt}\n\n---\n\n{restructured_content}"
+
+        # Save restructured content
+        unique_id = str(uuid.uuid4())
+        output_filename = f"restructured_{unique_id}.md"
+        output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
+
+        with open(output_filepath, 'w', encoding='utf-8') as f:
+            f.write(enhanced_content)
+
+        return jsonify({
+            "markdown": enhanced_content,
+            "download_url": f"/download/{output_filename}"
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/download-custom', methods=['POST'])
 def download_custom():

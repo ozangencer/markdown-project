@@ -15,6 +15,7 @@ This application allows users to easily convert different file types to Markdown
 - **Multiple YouTube URL processing** - Convert multiple YouTube videos in one operation
 - AI-powered summarization and analysis of YouTube video transcripts
 - **Batch YouTube summarization** - Summarize multiple YouTube videos together with AI
+- **Custom AI restructuring** - Restructure any converted content with custom prompts
 - **Multi-AI Provider Support** - Choose between OpenAI, DeepSeek, and Google Gemini
 - Image to Markdown conversion using AI with multiple provider options
 - **Custom filename support** - Set custom names for downloaded Markdown files
@@ -106,13 +107,20 @@ http://127.0.0.1:5003
 4. **Convert the Files**:
    - Click the "Convert" button to start the conversion process
    - Multiple files will be combined into a single Markdown document
+   - **Restructure with AI** button will become available after conversion
 
-5. **View and Download Results**:
-   - The converted Markdown will appear in the output area
+5. **Custom AI Restructuring** (Optional):
+   - Click the "Restructure with AI" button after conversion
+   - Enter your custom prompt in the modal (e.g., "Create a table of contents", "Summarize key points", "Extract action items")
+   - Click "Execute" to process the content with your custom instructions
+   - The restructured content will replace the original output
+
+6. **View and Download Results**:
+   - The converted (or restructured) Markdown will appear in the output area
    - **Optional**: Enter a custom filename in the "File Name" field
    - Click the "Download Markdown" button to save the result with your chosen name
 
-6. **Start Over**:
+7. **Start Over**:
    - Click the "Clear" button to reset the interface and convert more files
 
 ### YouTube Transcription and Analysis
@@ -136,20 +144,22 @@ http://127.0.0.1:5003
    - All transcripts are combined into a single document
    - Click the "Download Markdown" button to save all transcripts
 
-5. **Summarize and Analyze with AI**:
-   - After the transcripts are loaded, click the "Summarize All with AI" button
-   - The application will generate a comprehensive analysis including:
-     - Brief overview of all videos
-     - Individual summaries for each video
-     - Common themes across all videos
-     - Key takeaways from the collection
-     - Connections or contrasts between videos
+5. **AI Processing Options** (after transcripts are loaded):
 
-6. **View and Download Analysis**:
-   - The AI-generated analysis will replace the transcripts in the output area
-   - The analysis includes all YouTube video URLs as references
+   **Summarize All with AI**:
+   - Click the "Summarize All with AI" button for predefined comprehensive analysis
+   - Generates: Brief overview, main topics, key takeaways, notable quotes, and analysis
+   
+   **Restructure with AI** (Custom):
+   - Click the "Restructure with AI" button for custom processing
+   - Enter your own prompt (e.g., "Extract all mentioned tools and technologies", "Create a FAQ from this content")
+   - Get personalized analysis based on your specific needs
+
+6. **View and Download Results**:
+   - The AI-generated content will replace the transcripts in the output area
+   - All content includes YouTube video URLs as references
    - **Optional**: Enter a custom filename in the "File Name" field
-   - Click the "Download Markdown" button to save the analysis
+   - Click the "Download Markdown" button to save the results
 
 7. **Start Over**:
    - Click the "Clear" button to reset the interface and convert more videos
