@@ -16,6 +16,7 @@ This application allows users to easily convert different file types to Markdown
 - AI-powered summarization and analysis of YouTube video transcripts
 - **Batch YouTube summarization** - Summarize multiple YouTube videos together with AI
 - **Custom AI restructuring** - Restructure any converted content with custom prompts
+- **Professional .panda document processing** - Specialized business document analysis with intelligent default prompts for consulting materials (Gantt charts, process flows, tables, diagrams)
 - **Multi-AI Provider Support** - Choose between OpenAI, DeepSeek, and Google Gemini
 - Image to Markdown conversion using AI with multiple provider options
 - **Custom filename support** - Set custom names for downloaded Markdown files
@@ -113,7 +114,13 @@ http://127.0.0.1:5003
 
 5. **Custom AI Restructuring** (Optional):
    - Click the "Restructure with AI" button after conversion
-   - Enter your custom prompt in the modal (e.g., "Create a table of contents", "Summarize key points", "Extract action items")
+   - **For .panda files**: An intelligent default prompt automatically appears, specifically designed for business consulting documents (Gantt charts, process flows, tables, diagrams). This prompt ensures:
+     - Complete transcription of all visible text (no summaries)
+     - Detailed analysis of business processes and data
+     - Comprehensive documentation of timelines, metrics, and relationships
+     - Professional consulting-grade output with technical details
+   - **For other files**: Enter your custom prompt (e.g., "Create a table of contents", "Summarize key points", "Extract action items")
+   - You can always modify the default prompt or write your own
    - Click "Execute" to process the content with your custom instructions
    - The restructured content will replace the original output
 
@@ -205,5 +212,16 @@ The application supports various file formats through the MarkItDown library, in
 1. Visit: https://aistudio.google.com/
 2. Click "Get API key"
 3. Create a new API key
+
+## Customizing AI Prompts
+
+The application uses customizable prompt templates stored in `prompt_templates.json`:
+
+- **File-specific prompts**: Different templates for .panda, .xlsx, .docx, .pdf files
+- **Easy customization**: Edit the JSON file to modify or add new prompt templates
+- **Automatic detection**: System automatically selects appropriate template based on file type
+- **Consulting focus**: .panda files get specialized business document analysis prompts by default
+
+To customize prompts, simply edit `prompt_templates.json` and restart the application.
 
 

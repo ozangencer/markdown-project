@@ -14,6 +14,28 @@ from ai_providers import AIProviderFactory
 # .env dosyasından çevre değişkenlerini yükle
 load_dotenv()
 
+def load_prompt_templates():
+    """
+    Load prompt templates from JSON file
+    """
+    try:
+        with open('prompt_templates.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        print("Warning: prompt_templates.json not found. Using default templates.")
+        return {}
+    except Exception as e:
+        print(f"Error loading prompt templates: {e}")
+        return {}
+
+def get_template_for_extension(filename):
+    """
+    Get appropriate prompt template based on file extension
+    """
+    templates = load_prompt_templates()
+    file_extension = os.path.splitext(filename.lower())[1]
+    return templates.get(file_extension, None)
+
 app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -56,6 +78,15 @@ def get_ai_providers():
             "providers": providers,
             "current": current_provider
         })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/prompt-templates', methods=['GET'])
+def get_prompt_templates():
+    """Get available prompt templates"""
+    try:
+        templates = load_prompt_templates()
+        return jsonify({"templates": templates})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -131,25 +162,27 @@ def convert_file():
                     if not ai_provider.is_available():
                         return jsonify({"error": "AI provider is not configured. Please set API keys in the .env file."}), 400
 
-                    # Görüntü açıklaması için özelleştirilmiş prompt kullan (convert metodunda)
-                    custom_prompt = """Bu bir profesyonel sunum görseli. Lütfen aşağıdaki yapıda analiz et:
+                    # Image analysis prompt for professional presentation visuals
+                    custom_prompt = """Analyze this business document image and provide:
 
-**GÖRSEL TİPİ**: [Gantt Chart / Tablo / SmartArt / Flow Chart / Organizasyon Şeması / Matris / Timeline / Process Diagram / Diğer - hangisi olduğunu belirt]
+# Description:
+Detailed analysis of the image content
 
-**BAŞLIK/KONU**: [Görselin ana konusu veya başlığı]
+VISUAL TYPE: Identify if this is a Gantt Chart, Table, Flow Chart, Organization Chart, Timeline, Process Diagram, or other business visual
 
-**İÇERİK DETAYI**:
-- Tüm metin içeriğini kelimesi kelimesine yaz
-- Tablolarda: Tüm satır ve sütun başlıklarını ve hücre içeriklerini
-- Flow/Process'lerde: Her kutunun içeriğini ve okların yönünü
-- Gantt'larda: Görev adları, tarihler, süreler
-- SmartArt'larda: Her bileşenin metnini hiyerarşik sırayla
+TITLE: Main subject or heading of the visual
 
-**ANAHTAR KELİMELER**: [Bu görseli aramak için kullanılabilecek kelimeler - proje adları, departmanlar, tarihler, KPI'lar, metrikler]
+CONTENT: 
+- Read and transcribe all visible text exactly as written
+- For tables: Include all headers and data
+- For charts: Describe all elements and connections
+- For processes: Detail each step and flow
 
-**BAĞLAM/KULLANIM ALANI**: [Bu görselin hangi bağlamda kullanıldığı - strateji sunumu, proje planı, organizasyon yapısı, vs.]
+KEYWORDS: Important terms, project names, dates, metrics mentioned
 
-**ÖNEMLİ DETAYLAR**: [Vurgulanan noktalar, renklerle belirtilen öncelikler, kritik tarihler]"""
+CONTEXT: Business context where this visual would be used
+
+DETAILS: Any highlighted information, color coding, or critical data points"""
                     
                     # AI provider'ın process_image metodunu kullan
                     result_text = ai_provider.process_image(temp_filepath, custom_prompt)
@@ -257,37 +290,50 @@ def process_zip_file(zip_filepath, original_filename):
                         if not ai_provider.is_available():
                             markdown_content += f"\n## {relative_path}\n\n*Bu bir görüntü dosyasıdır ve dönüştürmek için AI provider ayarlanmış olmalıdır.*\n\n"
                             continue
+                            
+                        # Image analysis prompt for professional presentation visuals
+                        custom_prompt = """Analyze this business document image and provide:
+
+# Description:
+Detailed analysis of the image content
+
+VISUAL TYPE: Identify if this is a Gantt Chart, Table, Flow Chart, Organization Chart, Timeline, Process Diagram, or other business visual
+
+TITLE: Main subject or heading of the visual
+
+CONTENT: 
+- Read and transcribe all visible text exactly as written
+- For tables: Include all headers and data
+- For charts: Describe all elements and connections
+- For processes: Detail each step and flow
+
+KEYWORDS: Important terms, project names, dates, metrics mentioned
+
+CONTEXT: Business context where this visual would be used
+
+DETAILS: Any highlighted information, color coding, or critical data points"""
+                        
+                        # Google provider için direkt process_image kullan, diğerleri için MarkItDown
+                        client = ai_provider.get_client_for_markitdown()
+                        if client is not None:
+                            # OpenAI/DeepSeek - MarkItDown kullan
+                            markitdown = MarkItDown(llm_client=client, llm_model=ai_provider.get_model_name())
+                            result = markitdown.convert(file_path, llm_prompt=custom_prompt)
+                        else:
+                            # Google - direkt process_image kullan
+                            result_text = ai_provider.process_image(file_path, custom_prompt)
+                            # MarkItDown result format'ına uygun olarak sarmalama
+                            class ImageResult:
+                                def __init__(self, text):
+                                    self.text_content = text
+                            result = ImageResult(result_text)
+                            
                     except Exception:
                         markdown_content += f"\n## {relative_path}\n\n*Bu bir görüntü dosyasıdır ve dönüştürmek için AI provider ayarlanmış olmalıdır.*\n\n"
                         continue
-
-                    # Görüntü açıklaması için özelleştirilmiş prompt kullan (convert metodunda)
-                    custom_prompt = """Bu bir profesyonel sunum görseli. Lütfen aşağıdaki yapıda analiz et:
-
-**GÖRSEL TİPİ**: [Gantt Chart / Tablo / SmartArt / Flow Chart / Organizasyon Şeması / Matris / Timeline / Process Diagram / Diğer - hangisi olduğunu belirt]
-
-**BAŞLIK/KONU**: [Görselin ana konusu veya başlığı]
-
-**İÇERİK DETAYI**:
-- Tüm metin içeriğini kelimesi kelimesine yaz
-- Tablolarda: Tüm satır ve sütun başlıklarını ve hücre içeriklerini
-- Flow/Process'lerde: Her kutunun içeriğini ve okların yönünü
-- Gantt'larda: Görev adları, tarihler, süreler
-- SmartArt'larda: Her bileşenin metnini hiyerarşik sırayla
-
-**ANAHTAR KELİMELER**: [Bu görseli aramak için kullanılabilecek kelimeler - proje adları, departmanlar, tarihler, KPI'lar, metrikler]
-
-**BAĞLAM/KULLANIM ALANI**: [Bu görselin hangi bağlamda kullanıldığı - strateji sunumu, proje planı, organizasyon yapısı, vs.]
-
-**ÖNEMLİ DETAYLAR**: [Vurgulanan noktalar, renklerle belirtilen öncelikler, kritik tarihler]"""
-                    markitdown = MarkItDown(llm_client=ai_provider.get_client_for_markitdown(), llm_model=ai_provider.get_model_name())
                 else:
+                    # Normal dosya - MarkItDown ile işle
                     markitdown = MarkItDown()
-
-                # Dosyayı dönüştür - Görüntüyse özelleştirilmiş promptu convert metoduna geçir
-                if is_image and ai_provider.is_available():
-                    result = markitdown.convert(file_path, llm_prompt=custom_prompt)
-                else:
                     result = markitdown.convert(file_path)
 
                 # Dönüştürülmüş içeriği sonuç dosyasına ekle
@@ -361,24 +407,26 @@ def process_multiple_files(files):
                             markdown_content += f"\n## File {i}: {file.filename}\n\n*This is an image file and requires AI provider configuration for conversion.*\n\n---\n\n"
                             continue
                             
-                        custom_prompt = """Bu bir profesyonel sunum görseli. Lütfen aşağıdaki yapıda analiz et:
+                        custom_prompt = """Analyze this business document image and provide:
 
-**GÖRSEL TİPİ**: [Gantt Chart / Tablo / SmartArt / Flow Chart / Organizasyon Şeması / Matris / Timeline / Process Diagram / Diğer - hangisi olduğunu belirt]
+# Description:
+Detailed analysis of the image content
 
-**BAŞLIK/KONU**: [Görselin ana konusu veya başlığı]
+VISUAL TYPE: Identify if this is a Gantt Chart, Table, Flow Chart, Organization Chart, Timeline, Process Diagram, or other business visual
 
-**İÇERİK DETAYI**:
-- Tüm metin içeriğini kelimesi kelimesine yaz
-- Tablolarda: Tüm satır ve sütun başlıklarını ve hücre içeriklerini
-- Flow/Process'lerde: Her kutunun içeriğini ve okların yönünü
-- Gantt'larda: Görev adları, tarihler, süreler
-- SmartArt'larda: Her bileşenin metnini hiyerarşik sırayla
+TITLE: Main subject or heading of the visual
 
-**ANAHTAR KELİMELER**: [Bu görseli aramak için kullanılabilecek kelimeler - proje adları, departmanlar, tarihler, KPI'lar, metrikler]
+CONTENT: 
+- Read and transcribe all visible text exactly as written
+- For tables: Include all headers and data
+- For charts: Describe all elements and connections
+- For processes: Detail each step and flow
 
-**BAĞLAM/KULLANIM ALANI**: [Bu görselin hangi bağlamda kullanıldığı - strateji sunumu, proje planı, organizasyon yapısı, vs.]
+KEYWORDS: Important terms, project names, dates, metrics mentioned
 
-**ÖNEMLİ DETAYLAR**: [Vurgulanan noktalar, renklerle belirtilen öncelikler, kritik tarihler]"""
+CONTEXT: Business context where this visual would be used
+
+DETAILS: Any highlighted information, color coding, or critical data points"""
                         
                         # AI provider'ın process_image metodunu kullan (single file ile aynı)
                         result_text = ai_provider.process_image(temp_filepath, custom_prompt)
@@ -678,8 +726,8 @@ def restructure_content():
         
         restructured_content = ai_provider.chat_completion(messages, max_tokens=2000)
 
-        # Add header with user prompt
-        enhanced_content = f"# AI Restructured Content\n\n**User Request:** {custom_prompt}\n\n---\n\n{restructured_content}"
+        # Use only the AI-generated content without showing the user prompt
+        enhanced_content = restructured_content
 
         # Save restructured content
         unique_id = str(uuid.uuid4())

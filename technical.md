@@ -101,6 +101,7 @@ The frontend consists of:
 - **File Accumulation System**: Progressive file addition with duplicate prevention
 - **Folder Drop Processing**: Recursively reads directory contents using webkitGetAsEntry() API
 - **Custom AI Restructuring**: Modal interface for user-defined prompts, API integration
+- **Intelligent .panda Document Processing**: Auto-detection of business consulting documents with specialized default prompts for comprehensive analysis
 - Manages file type detection and icon display
 - **Custom Filename Handling**: User input validation and custom download logic
 - Tracks current YouTube transcript for summarization
@@ -247,6 +248,46 @@ Based on the detected type, appropriate icons are displayed:
 6. The resulting enhanced analysis is saved as a separate Markdown file with unique ID
 7. The server returns the analysis content and a download URL to the client
 
+### Intelligent .panda Document Processing
+
+The application includes specialized processing for business consulting documents stored in .panda format:
+
+#### Auto-Detection System
+```javascript
+const isPandaDocument = currentMarkdownContent && 
+                        currentMarkdownContent.includes('.panda') && 
+                        currentMarkdownContent.includes('# Description:') &&
+                        currentMarkdownContent.includes('![](assets/');
+```
+
+#### Specialized Business Prompt Template
+When .panda documents are detected, the system automatically loads a comprehensive prompt template designed for:
+
+**Document Types Supported:**
+- Gantt charts with timelines, dependencies, and resource allocation
+- Process flow diagrams with decision points and workflows  
+- Business tables with financial data and metrics
+- Organizational charts with roles and reporting structures
+- Project dashboards with KPIs and status indicators
+
+**Comprehensive Analysis Features:**
+- **Complete Text Transcription**: Extracts all visible text without summarization
+- **Business Process Documentation**: Details every step, decision point, and workflow
+- **Data Preservation**: Maintains exact numbers, dates, percentages, and metrics
+- **Visual Element Description**: Explains arrows, connections, colors, and layouts
+- **Professional Output**: Generates consulting-grade documentation with technical details
+
+**Example Output Quality:**
+- Gantt charts: Include all task names, timelines, critical paths, dependencies, resource assignments
+- Process flows: Document each decision matrix, SLA commitments, exception handling procedures
+- Financial tables: Transcribe complete data sets with growth metrics and regional breakdowns
+
+#### User Experience
+- **Intelligent Defaults**: Pre-populated prompt appears automatically for .panda files
+- **Full Customization**: Users can modify or replace the default prompt entirely  
+- **Seamless Integration**: Works with existing restructure workflow and all AI providers
+- **Professional Standards**: Ensures output meets consulting documentation requirements
+
 ### Error Handling
 
 - **Frontend**:
@@ -332,6 +373,7 @@ The application is designed for simplicity rather than high-volume processing:
    - ✅ **Clipboard Image Paste Support**: Direct image paste from clipboard with automatic naming
    - ✅ **File Accumulation System**: Progressive file selection without auto-clearing, duplicate prevention
    - ✅ **Custom AI Restructuring**: User-defined prompts for content restructuring with modal interface
+   - ✅ **Intelligent .panda Business Document Analysis**: Auto-detection and specialized processing for consulting materials with comprehensive default prompts for Gantt charts, process flows, and business diagrams
    - ✅ **Folder Drop Support**: Drag and drop entire folders to process all contents recursively
    - Support for additional archive formats (RAR, 7z, etc.)
    - Configurable AI summarization options (brief vs detailed, focus areas)

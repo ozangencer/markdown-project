@@ -185,13 +185,55 @@ class GoogleProvider(AIProvider):
             
             # Varsayılan prompt
             if not prompt:
-                prompt = """Bu görüntüyü analiz et ve detaylı bir açıklama yap. 
-                Görüntüde ne görüyorsun? Metin varsa oku ve dahil et. 
-                Görüntünün türünü, içeriğini ve önemli detayları açıkla."""
+                prompt = """Analyze this image and provide a detailed description. 
+                What do you see in the image? If there is text, read and include it. 
+                Describe the type, content and important details of the image."""
             
-            # Gemini Vision model ile işle
-            response = self.model.generate_content([prompt, image])
-            return response.text
+            # Gemini Vision model ile güvenlik ayarları ile işle
+            response = self.model.generate_content(
+                [prompt, image],
+                safety_settings=[
+                    {
+                        "category": "HARM_CATEGORY_HARASSMENT",
+                        "threshold": "BLOCK_NONE"
+                    },
+                    {
+                        "category": "HARM_CATEGORY_HATE_SPEECH", 
+                        "threshold": "BLOCK_NONE"
+                    },
+                    {
+                        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                        "threshold": "BLOCK_NONE"
+                    },
+                    {
+                        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                        "threshold": "BLOCK_NONE"
+                    }
+                ],
+                generation_config=genai.types.GenerationConfig(
+                    max_output_tokens=2000,
+                    temperature=0.1
+                )
+            )
+            
+            # Response kontrolü
+            if not response.parts:
+                raise Exception("Google API returned empty response. The image may have been blocked by safety filters.")
+            
+            # Text içeriğini güvenli şekilde al
+            if hasattr(response, 'text') and response.text:
+                return response.text
+            else:
+                # Fallback: parts'tan text çıkar
+                text_parts = []
+                for part in response.parts:
+                    if hasattr(part, 'text'):
+                        text_parts.append(part.text)
+                
+                if text_parts:
+                    return ''.join(text_parts)
+                else:
+                    raise Exception("Google API response contains no text content. Image may be blocked by safety filters.")
             
         except Exception as e:
             raise Exception(f"Google image processing error: {str(e)}")

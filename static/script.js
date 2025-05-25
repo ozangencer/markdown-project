@@ -92,6 +92,9 @@ document.addEventListener("DOMContentLoaded", () => {
     let youtubeTranscripts = [];
     let currentMarkdownContent = "";
     let currentDownloadUrl = "";
+    
+    // Store prompt templates
+    let promptTemplates = {};
 
     // Tab switching functionality
     fileTabButton.addEventListener("click", () => {
@@ -578,6 +581,19 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // Load prompt templates from server
+    async function loadPromptTemplates() {
+        try {
+            const response = await fetch("/prompt-templates");
+            if (response.ok) {
+                const data = await response.json();
+                promptTemplates = data.templates;
+            }
+        } catch (error) {
+            console.error("Error loading prompt templates:", error);
+        }
+    }
+
     // AI Provider functionality
     async function loadAIProviders() {
         try {
@@ -706,7 +722,37 @@ document.addEventListener("DOMContentLoaded", () => {
     // Show prompt modal for restructuring
     function showPromptModal(type) {
         currentRestructureType = type;
-        customPrompt.value = '';
+        
+        // Check if current content contains .panda and has expected structure
+        const isPandaDocument = currentMarkdownContent && 
+                                currentMarkdownContent.includes('.panda') && 
+                                currentMarkdownContent.includes('# Description:');
+        
+        // Set default prompt based on document type
+        if (isPandaDocument) {
+            // Use .panda template from loaded templates
+            customPrompt.value = promptTemplates['.panda'] || '';
+        } else {
+            // For other file types, try to detect extension from content
+            let detectedExtension = null;
+            
+            // Try to detect file extension from content patterns
+            if (currentMarkdownContent.includes('File 1:') || currentMarkdownContent.includes('## File')) {
+                // Look for file extensions in the content
+                const extensionPatterns = ['.xlsx', '.docx', '.pdf', '.pptx'];
+                for (const ext of extensionPatterns) {
+                    if (currentMarkdownContent.includes(ext)) {
+                        detectedExtension = ext;
+                        break;
+                    }
+                }
+            }
+            
+            // Use appropriate template or empty
+            customPrompt.value = detectedExtension && promptTemplates[detectedExtension] ? 
+                               promptTemplates[detectedExtension] : '';
+        }
+        
         promptModal.style.display = 'flex';
         customPrompt.focus();
     }
@@ -791,6 +837,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // Load AI providers on page load
+    // Load AI providers and prompt templates on page load
     loadAIProviders();
+    loadPromptTemplates();
 });
