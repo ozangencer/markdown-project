@@ -16,7 +16,7 @@ This application allows users to easily convert different file types to Markdown
 - AI-powered summarization and analysis of YouTube video transcripts
 - **Batch YouTube summarization** - Summarize multiple YouTube videos together with AI
 - **Custom AI restructuring** - Restructure any converted content with custom prompts
-- **Professional .panda document processing** - Specialized business document analysis with intelligent default prompts for consulting materials (Gantt charts, process flows, tables, diagrams)
+- **Professional .panda document processing** - Specialized business document analysis with intelligent default prompts for consulting materials (Gantt charts, process flows, tables, diagrams) - **Note: OpenAI provider recommended for optimal .panda document analysis**
 - **Multi-AI Provider Support** - Choose between OpenAI, DeepSeek, and Google Gemini
 - Image to Markdown conversion using AI with multiple provider options
 - **Custom filename support** - Set custom names for downloaded Markdown files
@@ -191,10 +191,12 @@ The application supports various file formats through the MarkItDown library, in
 | Text Processing | ✅ Excellent | ✅ Fast & Cost-effective | ✅ Very Fast |
 | Image Processing | ✅ GPT-4V | ❌ Not supported yet* | ✅ Gemini Vision |
 | YouTube Summarization | ✅ Comprehensive | ✅ Efficient | ✅ Detailed |
+| .panda Document Analysis | ✅ **Recommended** | ✅ Good | 🟡 Limited** |
 | Speed | 🟡 Moderate | 🟢 Very Fast | 🟢 Very Fast |
 | Cost | 🟡 Premium | 🟢 Budget-friendly | 🟢 Free tier available |
 
 *DeepSeek-VL2 (vision model) is coming soon to the API
+**Google provider may have limitations with complex business document analysis due to safety filters
 
 ## Getting API Keys
 

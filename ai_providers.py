@@ -189,7 +189,7 @@ class GoogleProvider(AIProvider):
                 What do you see in the image? If there is text, read and include it. 
                 Describe the type, content and important details of the image."""
             
-            # Gemini Vision model ile güvenlik ayarları ile işle
+            # Gemini Vision model ile işle
             response = self.model.generate_content(
                 [prompt, image],
                 safety_settings=[
@@ -208,6 +208,10 @@ class GoogleProvider(AIProvider):
                     {
                         "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
                         "threshold": "BLOCK_NONE"
+                    },
+                    {
+                        "category": "HARM_CATEGORY_CIVIC_INTEGRITY",
+                        "threshold": "BLOCK_NONE"
                     }
                 ],
                 generation_config=genai.types.GenerationConfig(
@@ -216,15 +220,25 @@ class GoogleProvider(AIProvider):
                 )
             )
             
-            # Response kontrolü
-            if not response.parts:
-                raise Exception("Google API returned empty response. The image may have been blocked by safety filters.")
+            # Response kontrolü ve güvenlik filtresi kontrolü
+            if hasattr(response, 'candidates') and response.candidates:
+                candidate = response.candidates[0]
+                if hasattr(candidate, 'finish_reason'):
+                    if candidate.finish_reason == 2:  # SAFETY
+                        raise Exception("Content was blocked by Google's safety filters. Try using OpenAI provider for this image.")
+                    elif candidate.finish_reason == 3:  # RECITATION
+                        raise Exception("Content was blocked due to recitation concerns.")
             
             # Text içeriğini güvenli şekilde al
-            if hasattr(response, 'text') and response.text:
-                return response.text
-            else:
-                # Fallback: parts'tan text çıkar
+            try:
+                if hasattr(response, 'text') and response.text:
+                    return response.text
+            except ValueError:
+                # response.text accessor failed, try manual extraction
+                pass
+            
+            # Fallback: parts'tan text çıkar
+            if hasattr(response, 'parts') and response.parts:
                 text_parts = []
                 for part in response.parts:
                     if hasattr(part, 'text'):
@@ -232,8 +246,19 @@ class GoogleProvider(AIProvider):
                 
                 if text_parts:
                     return ''.join(text_parts)
-                else:
-                    raise Exception("Google API response contains no text content. Image may be blocked by safety filters.")
+            
+            # Son fallback: candidates'tan text çıkar
+            if hasattr(response, 'candidates') and response.candidates:
+                for candidate in response.candidates:
+                    if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                        text_parts = []
+                        for part in candidate.content.parts:
+                            if hasattr(part, 'text'):
+                                text_parts.append(part.text)
+                        if text_parts:
+                            return ''.join(text_parts)
+            
+            raise Exception("Google API response contains no text content.")
             
         except Exception as e:
             raise Exception(f"Google image processing error: {str(e)}")

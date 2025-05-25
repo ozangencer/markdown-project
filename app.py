@@ -14,6 +14,24 @@ from ai_providers import AIProviderFactory
 # .env dosyasından çevre değişkenlerini yükle
 load_dotenv()
 
+def clean_markdown_content(content):
+    """
+    Clean markdown content by removing code blocks and replacing HTML comments
+    """
+    if not content:
+        return content
+    
+    # Remove markdown code blocks at start and end
+    import re
+    cleaned = re.sub(r'^```markdown\n', '', content)
+    cleaned = re.sub(r'\n```$', '', cleaned)
+    
+    # Replace HTML comments with simpler markers
+    cleaned = re.sub(r'<!--\s*', '-- Start of Image Content\n', cleaned)
+    cleaned = re.sub(r'\s*-->', '\n-- End of Image Content', cleaned)
+    
+    return cleaned
+
 def load_prompt_templates():
     """
     Load prompt templates from JSON file
@@ -205,9 +223,10 @@ DETAILS: Any highlighted information, color coding, or critical data points"""
             output_filename = f"{os.path.splitext(file.filename)[0]}_{unique_id}.md"
             output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
 
-            # Markdown içeriğini kaydet
+            # Markdown içeriğini temizle ve kaydet
+            cleaned_content = clean_markdown_content(result.text_content)
             with open(output_filepath, 'w', encoding='utf-8') as f:
-                f.write(result.text_content)
+                f.write(cleaned_content)
 
             # Geçici dosyayı temizle
             if os.path.exists(temp_filepath):
@@ -294,7 +313,6 @@ def process_zip_file(zip_filepath, original_filename):
                         # Image analysis prompt for professional presentation visuals
                         custom_prompt = """Analyze this business document image and provide:
 
-# Description:
 Detailed analysis of the image content
 
 VISUAL TYPE: Identify if this is a Gantt Chart, Table, Flow Chart, Organization Chart, Timeline, Process Diagram, or other business visual
@@ -348,9 +366,10 @@ DETAILS: Any highlighted information, color coding, or critical data points"""
     output_filename = f"{os.path.splitext(original_filename)[0]}_zip_{unique_id}.md"
     output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
 
-    # Markdown içeriğini kaydet
+    # Markdown içeriğini temizle ve kaydet
+    cleaned_content = clean_markdown_content(markdown_content)
     with open(output_filepath, 'w', encoding='utf-8') as f:
-        f.write(markdown_content)
+        f.write(cleaned_content)
 
     # Markdown içeriğini JSON olarak döndür
     return jsonify({
@@ -457,7 +476,7 @@ DETAILS: Any highlighted information, color coding, or critical data points"""
         output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
         
         with open(output_filepath, 'w', encoding='utf-8') as f:
-            f.write(markdown_content)
+            f.write(clean_markdown_content(markdown_content))
         
         return jsonify({
             "markdown": markdown_content,
@@ -497,7 +516,7 @@ def convert_youtube():
 
         # Save the enhanced markdown result
         with open(output_filepath, 'w', encoding='utf-8') as f:
-            f.write(enhanced_content)
+            f.write(clean_markdown_content(enhanced_content))
 
         return jsonify({
             "markdown": enhanced_content,
@@ -561,7 +580,7 @@ def summarize_youtube():
         output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
 
         with open(output_filepath, 'w', encoding='utf-8') as f:
-            f.write(enhanced_summary)
+            f.write(clean_markdown_content(enhanced_summary))
 
         return jsonify({
             "markdown": enhanced_summary,
@@ -614,7 +633,7 @@ def convert_youtube_multiple():
         output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
         
         with open(output_filepath, 'w', encoding='utf-8') as f:
-            f.write(markdown_content)
+            f.write(clean_markdown_content(markdown_content))
         
         return jsonify({
             "markdown": markdown_content,
@@ -675,7 +694,7 @@ def summarize_youtube_multiple():
         output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
 
         with open(output_filepath, 'w', encoding='utf-8') as f:
-            f.write(enhanced_summary)
+            f.write(clean_markdown_content(enhanced_summary))
 
         return jsonify({
             "markdown": enhanced_summary,
@@ -735,7 +754,7 @@ def restructure_content():
         output_filepath = os.path.join(UPLOAD_FOLDER, output_filename)
 
         with open(output_filepath, 'w', encoding='utf-8') as f:
-            f.write(enhanced_content)
+            f.write(clean_markdown_content(enhanced_content))
 
         return jsonify({
             "markdown": enhanced_content,

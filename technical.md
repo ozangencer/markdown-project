@@ -146,11 +146,13 @@ The application implements a modular AI provider system using the Abstract Facto
 
 | Provider | Model | Image Processing | MarkItDown Support | Special Features |
 |----------|-------|------------------|-------------------|------------------|
-| OpenAI | GPT-4o | ✅ GPT-4V | ✅ Full | Industry standard |
+| OpenAI | GPT-4o | ✅ GPT-4V | ✅ Full | Industry standard, **best for .panda** |
 | DeepSeek | DeepSeek-V3 | ❌ Text only* | ✅ Compatible | Cost-effective, fast |
-| Google | Gemini 2.5 Flash | ✅ Gemini Vision | ❌ Custom impl. | Native multimodal |
+| Google | Gemini 2.5 Flash | ✅ Gemini Vision | ❌ Custom impl. | Native multimodal, **limited .panda support** |
 
 *DeepSeek provides clear error messaging for image processing attempts
+
+**Note for .panda Documents**: OpenAI provider is recommended for optimal business document analysis. Google's safety filters may block complex business content, limiting analysis quality for consulting materials like Gantt charts and process flows.
 
 #### Image Processing Implementation
 

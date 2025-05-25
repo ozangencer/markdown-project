@@ -536,6 +536,20 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // Content cleaning function
+    function cleanMarkdownContent(content) {
+        if (!content) return content;
+        
+        // Remove markdown code blocks at start and end
+        let cleaned = content.replace(/^```markdown\n/, '').replace(/\n```$/, '');
+        
+        // Replace HTML comments with simpler markers
+        cleaned = cleaned.replace(/<!--\s*/g, '-- Start of Image Content\n');
+        cleaned = cleaned.replace(/\s*-->/g, '\n-- End of Image Content');
+        
+        return cleaned;
+    }
+
     // Download butonu için tıklama eventi
     downloadButton.addEventListener("click", async (e) => {
         e.preventDefault();
@@ -551,7 +565,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
-                        content: currentMarkdownContent,
+                        content: cleanMarkdownContent(currentMarkdownContent),
                         filename: customFilename
                     }),
                 });
