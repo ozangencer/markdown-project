@@ -212,6 +212,7 @@ CONTENT:
 - For tables: Include all headers and data
 - For charts: Describe all elements and connections
 - For processes: Detail each step and flow
+- If it can’t provide any of these exactly, write a summary of the image.
 
 KEYWORDS: Important terms, project names, dates, metrics mentioned
 
