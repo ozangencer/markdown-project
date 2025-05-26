@@ -26,9 +26,26 @@ def clean_markdown_content(content):
     cleaned = re.sub(r'^```markdown\n', '', content)
     cleaned = re.sub(r'\n```$', '', cleaned)
     
-    # Replace HTML comments with simpler markers
-    cleaned = re.sub(r'<!--\s*', '-- Start of Image Content\n', cleaned)
-    cleaned = re.sub(r'\s*-->', '\n-- End of Image Content', cleaned)
+    # Replace HTML comments with callout format
+    cleaned = re.sub(r'<!--\s*', '\n> [!NOTE] **Image Analysis**\n> ', cleaned)
+    cleaned = re.sub(r'\s*-->', '\n', cleaned)
+    
+    # Replace Start/End of Image Content markers with callout format
+    # This regex captures everything between Start and End markers and formats as callout
+    def format_image_content(match):
+        content = match.group(1).strip()
+        # Split content into lines and prefix each with "> "
+        lines = content.split('\n')
+        formatted_lines = []
+        for line in lines:
+            if line.strip():  # Only non-empty lines
+                formatted_lines.append(f"> {line}")
+            else:
+                formatted_lines.append(">")
+        return f"\n> [!NOTE] **Image Analysis**\n" + '\n'.join(formatted_lines) + "\n"
+    
+    cleaned = re.sub(r'-- Start of Image Content\s*\n(.*?)\n-- End of Image Content', 
+                     format_image_content, cleaned, flags=re.DOTALL)
     
     return cleaned
 
@@ -787,7 +804,7 @@ def download_custom():
         temp_filepath = os.path.join(UPLOAD_FOLDER, f"custom_{uuid.uuid4()}_{filename}")
         
         with open(temp_filepath, 'w', encoding='utf-8') as f:
-            f.write(content)
+            f.write(clean_markdown_content(content))
 
         # Return file as download
         response = send_file(temp_filepath, as_attachment=True, download_name=filename)

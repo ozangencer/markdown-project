@@ -36,7 +36,7 @@ The backend is implemented in `app.py` using Flask:
   - `/restructure` - Custom AI restructuring with user-defined prompts (POST)
   - `/ai-providers` - GET/POST endpoints for AI provider management
   - `/download/<filename>` - Facilitates downloading converted files
-  - `/download-custom` - Custom filename download endpoint (POST)
+  - `/download-custom` - Custom filename download endpoint with content formatting (POST)
 
 - **File Processing**:
   - Uses the `MarkItDown` library to convert uploaded files to Markdown
@@ -55,6 +55,11 @@ The backend is implemented in `app.py` using Flask:
   - **Intelligent Fallback**: Automatic provider detection and error handling
   - Sends YouTube transcripts to selected AI provider for comprehensive summarization
   - Generates structured markdown content from AI responses
+
+- **Content Formatting**:
+  - **Professional Callout System**: AI image analysis results are automatically formatted in callout boxes
+  - **Download-time Processing**: Content cleaning and formatting applied during both conversion and download
+  - **Markdown Enhancement**: HTML comments and text markers converted to GitHub-style callouts
 
 - **Environment Management**:
   - Uses python-dotenv for securing API keys
@@ -230,9 +235,13 @@ Based on the detected type, appropriate icons are displayed:
    - Combines all conversions into a single Markdown file with proper headings
    - Handles errors for individual files without failing the entire process
 5. For regular files, the file is processed using the `MarkItDown` library
-6. The resulting Markdown is saved as a new file with unique identifier in filename
-7. The temporary uploaded file is deleted after processing
-8. The server returns the Markdown content and a download URL to the client
+6. **Content Formatting**: AI image analysis results are formatted into professional callout boxes:
+   - HTML comments (`<!-- -->`) → `> [!NOTE] **Image Analysis**` callouts
+   - Text markers (`-- Start/End of Image Content`) → Formatted callout blocks
+   - Applied during both file processing and download operations
+7. The resulting Markdown is saved as a new file with unique identifier in filename
+8. The temporary uploaded file is deleted after processing
+9. The server returns the Markdown content and a download URL to the client
 
 #### YouTube Transcription
 1. YouTube URL is sent to the server using a POST request to `/convert-youtube`

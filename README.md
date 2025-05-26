@@ -19,6 +19,7 @@ This application allows users to easily convert different file types to Markdown
 - **Professional .panda document processing** - Specialized business document analysis with intelligent default prompts for consulting materials (Gantt charts, process flows, tables, diagrams) - **Note: OpenAI provider recommended for optimal .panda document analysis**
 - **Multi-AI Provider Support** - Choose between OpenAI, DeepSeek, and Google Gemini
 - Image to Markdown conversion using AI with multiple provider options
+- **Professional callout formatting** - AI image analysis results are presented in attractive callout boxes for better readability
 - **Custom filename support** - Set custom names for downloaded Markdown files
 - **Archive file processing** - ZIP files and other archive formats (like .panda) with automatic extraction and conversion of all contents
 - **Folder drop support** - Drag and drop entire folders to convert all files inside recursively
@@ -179,7 +180,7 @@ The application supports various file formats through the MarkItDown library, in
 
 - Microsoft Office documents (.docx, .doc, .xlsx, .xls, .pptx, .ppt)
 - PDF files
-- Images (png, jpg, jpeg, gif) - **AI-powered analysis with multiple provider support**
+- Images (png, jpg, jpeg, gif) - **AI-powered analysis with multiple provider support and professional callout formatting**
 - **Archive files** (ZIP, .panda and other configured formats - extracts and converts all files inside, excluding hidden files)
 - **Folders** (drag and drop entire folders to process all contents recursively)
 - And other formats supported by the MarkItDown library
