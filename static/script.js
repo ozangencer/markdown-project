@@ -737,10 +737,9 @@ document.addEventListener("DOMContentLoaded", () => {
     function showPromptModal(type) {
         currentRestructureType = type;
         
-        // Check if current content contains .panda and has expected structure
+        // Check if current content contains .panda files
         const isPandaDocument = currentMarkdownContent && 
-                                currentMarkdownContent.includes('.panda') && 
-                                currentMarkdownContent.includes('# Description:');
+                                currentMarkdownContent.includes('.panda');
         
         // Set default prompt based on document type
         if (isPandaDocument) {

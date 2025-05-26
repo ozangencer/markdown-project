@@ -119,7 +119,7 @@ class GoogleProvider(AIProvider):
         self.api_key = os.getenv('GOOGLE_API_KEY')
         if self.api_key:
             genai.configure(api_key=self.api_key)
-            self.model_name = "gemini-2.5-flash-preview-04-17"
+            self.model_name = "gemini-2.0-flash"
             try:
                 self.model = genai.GenerativeModel(self.model_name)
             except Exception:
@@ -185,35 +185,13 @@ class GoogleProvider(AIProvider):
             
             # Varsayılan prompt
             if not prompt:
-                prompt = """Analyze this image and provide a detailed description. 
+                prompt = """Analyze this image and provide a detailed description in markdown format. 
                 What do you see in the image? If there is text, read and include it. 
                 Describe the type, content and important details of the image."""
             
-            # Gemini Vision model ile işle
+            # Gemini Vision model ile işle - safety settings tamamen devre dışı
             response = self.model.generate_content(
                 [prompt, image],
-                safety_settings=[
-                    {
-                        "category": "HARM_CATEGORY_HARASSMENT",
-                        "threshold": "BLOCK_NONE"
-                    },
-                    {
-                        "category": "HARM_CATEGORY_HATE_SPEECH", 
-                        "threshold": "BLOCK_NONE"
-                    },
-                    {
-                        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                        "threshold": "BLOCK_NONE"
-                    },
-                    {
-                        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-                        "threshold": "BLOCK_NONE"
-                    },
-                    {
-                        "category": "HARM_CATEGORY_CIVIC_INTEGRITY",
-                        "threshold": "BLOCK_NONE"
-                    }
-                ],
                 generation_config=genai.types.GenerationConfig(
                     max_output_tokens=2000,
                     temperature=0.1
@@ -225,7 +203,19 @@ class GoogleProvider(AIProvider):
                 candidate = response.candidates[0]
                 if hasattr(candidate, 'finish_reason'):
                     if candidate.finish_reason == 2:  # SAFETY
-                        raise Exception("Content was blocked by Google's safety filters. Try using OpenAI provider for this image.")
+                        # Güvenlik filtresinin hangi kategorisini tetiklediğini kontrol et
+                        safety_ratings = getattr(candidate, 'safety_ratings', [])
+                        blocked_categories = []
+                        for rating in safety_ratings:
+                            if hasattr(rating, 'category') and hasattr(rating, 'probability'):
+                                if rating.probability in ['HIGH', 'MEDIUM']:
+                                    blocked_categories.append(rating.category.name)
+                        
+                        if blocked_categories:
+                            blocked_list = ', '.join(blocked_categories)
+                            raise Exception(f"Content was blocked by Google's safety filters ({blocked_list}). This content appears to violate Google's policy. Try using OpenAI provider for this image.")
+                        else:
+                            raise Exception("Content was blocked by Google's safety filters. Try using OpenAI provider for this image.")
                     elif candidate.finish_reason == 3:  # RECITATION
                         raise Exception("Content was blocked due to recitation concerns.")
             
