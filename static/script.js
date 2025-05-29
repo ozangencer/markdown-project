@@ -120,6 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
         'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'powerpoint.png',
         'application/vnd.ms-powerpoint': 'powerpoint.png',
         'application/pdf': 'pdf.png',
+        'message/rfc822': 'email.png',
         'image/png': 'image.png',
         'image/jpeg': 'image.png',
         'image/gif': 'image.png',
@@ -142,6 +143,7 @@ document.addEventListener("DOMContentLoaded", () => {
             'pptx': 'powerpoint.png',
             'ppt': 'powerpoint.png',
             'pdf': 'pdf.png',
+            'eml': 'email.png',
             'png': 'image.png',
             'jpg': 'image.png',
             'jpeg': 'image.png',
@@ -737,13 +739,30 @@ document.addEventListener("DOMContentLoaded", () => {
     function showPromptModal(type) {
         currentRestructureType = type;
         
-        // Check if current content contains .panda files
-        const isPandaDocument = currentMarkdownContent && 
-                                currentMarkdownContent.includes('.panda');
+        // Check if current content contains .panda files OR .md + .png combination
+        const isPandaDocument = currentMarkdownContent && (
+            currentMarkdownContent.includes('.panda') ||
+            (
+                (currentMarkdownContent.includes('.md') || currentMarkdownContent.includes('markdown')) && 
+                (currentMarkdownContent.includes('.png') || currentMarkdownContent.includes('PNG'))
+            )
+        );
+        
+        // Debug: Log the detection results
+        console.log('Debug - isPandaDocument detection:');
+        console.log('- Has .panda:', currentMarkdownContent && currentMarkdownContent.includes('.panda'));
+        console.log('- Has .md:', currentMarkdownContent && currentMarkdownContent.includes('.md'));
+        console.log('- Has markdown:', currentMarkdownContent && currentMarkdownContent.includes('markdown'));
+        console.log('- Has .png:', currentMarkdownContent && currentMarkdownContent.includes('.png'));
+        console.log('- Has PNG:', currentMarkdownContent && currentMarkdownContent.includes('PNG'));
+        console.log('- Final isPandaDocument:', isPandaDocument);
+        console.log('- Content preview:', currentMarkdownContent ? currentMarkdownContent.substring(0, 500) : 'No content');
+        console.log('- Available prompt templates:', Object.keys(promptTemplates));
+        console.log('- .panda template exists:', !!promptTemplates['.panda']);
         
         // Set default prompt based on document type
         if (isPandaDocument) {
-            // Use .panda template from loaded templates
+            // Use .panda template for .panda files or .md + .png combinations
             customPrompt.value = promptTemplates['.panda'] || '';
         } else {
             // For other file types, try to detect extension from content

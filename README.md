@@ -115,7 +115,7 @@ http://127.0.0.1:5003
 
 5. **Custom AI Restructuring** (Optional):
    - Click the "Restructure with AI" button after conversion
-   - **For .panda files**: An intelligent default prompt automatically appears, specifically designed for business consulting documents (Gantt charts, process flows, tables, diagrams). This prompt ensures:
+   - **For .panda files or .md + .png combinations**: An intelligent default prompt automatically appears, specifically designed for business consulting documents (Gantt charts, process flows, tables, diagrams). This prompt ensures:
      - Complete transcription of all visible text (no summaries)
      - Detailed analysis of business processes and data
      - Comprehensive documentation of timelines, metrics, and relationships
@@ -180,6 +180,7 @@ The application supports various file formats through the MarkItDown library, in
 
 - Microsoft Office documents (.docx, .doc, .xlsx, .xls, .pptx, .ppt)
 - PDF files
+- **Email files** (.eml) - Professional email parsing with structured headers, message body, and attachment information
 - Images (png, jpg, jpeg, gif) - **AI-powered analysis with multiple provider support and professional callout formatting**
 - **Archive files** (ZIP, .panda and other configured formats - extracts and converts all files inside, excluding hidden files)
 - **Folders** (drag and drop entire folders to process all contents recursively)

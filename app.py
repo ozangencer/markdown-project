@@ -7,6 +7,8 @@ import json
 import zipfile
 import tempfile
 import shutil
+import email
+from email.policy import default
 from pathlib import Path
 from dotenv import load_dotenv
 from ai_providers import AIProviderFactory
@@ -70,6 +72,102 @@ def get_template_for_extension(filename):
     templates = load_prompt_templates()
     file_extension = os.path.splitext(filename.lower())[1]
     return templates.get(file_extension, None)
+
+def convert_eml_to_markdown(eml_path):
+    """
+    Convert .eml file to structured markdown using Python's email module
+    """
+    try:
+        # Parse the email file
+        with open(eml_path, 'rb') as f:
+            msg = email.message_from_binary_file(f, policy=default)
+        
+        # Build markdown content
+        markdown_content = "# Email Message\n\n"
+        
+        # Email headers
+        markdown_content += "## Headers\n\n"
+        
+        # Essential headers
+        headers = [
+            ('From', 'From'),
+            ('To', 'To'),
+            ('CC', 'CC'),
+            ('BCC', 'BCC'),
+            ('Subject', 'Subject'),
+            ('Date', 'Date'),
+            ('Message-ID', 'Message ID'),
+            ('Reply-To', 'Reply-To')
+        ]
+        
+        for header_key, header_display in headers:
+            header_value = msg.get(header_key)
+            if header_value:
+                # Handle encoded headers
+                if header_key in ['From', 'To', 'CC', 'BCC', 'Reply-To']:
+                    # These might have encoded names
+                    markdown_content += f"**{header_display}:** {header_value}\n\n"
+                else:
+                    markdown_content += f"**{header_display}:** {header_value}\n\n"
+        
+        # Email body
+        markdown_content += "---\n\n## Message Body\n\n"
+        
+        # Extract body content
+        body_content = ""
+        
+        if msg.is_multipart():
+            # Handle multipart messages
+            for part in msg.walk():
+                content_type = part.get_content_type()
+                
+                # Prioritize plain text
+                if content_type == 'text/plain':
+                    body_content = part.get_content()
+                    break
+                elif content_type == 'text/html' and not body_content:
+                    # Use HTML if no plain text found (we could improve this by converting HTML to markdown)
+                    html_content = part.get_content()
+                    # Simple HTML tag removal for basic conversion
+                    import re
+                    body_content = re.sub(r'<[^>]+>', '', html_content)
+                    body_content = body_content.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+        else:
+            # Simple message
+            body_content = msg.get_content()
+        
+        if body_content:
+            # Clean and format body content
+            body_content = body_content.strip()
+            markdown_content += body_content
+        else:
+            markdown_content += "*No readable content found in email body.*"
+        
+        # Attachments info
+        attachments = []
+        if msg.is_multipart():
+            for part in msg.walk():
+                if part.get_content_disposition() == 'attachment':
+                    filename = part.get_filename()
+                    if filename:
+                        attachments.append(filename)
+        
+        if attachments:
+            markdown_content += "\n\n---\n\n## Attachments\n\n"
+            for attachment in attachments:
+                markdown_content += f"- {attachment}\n"
+        
+        # Create a result object similar to MarkItDown's output
+        class EmailResult:
+            def __init__(self, text):
+                self.text_content = text
+        
+        return EmailResult(markdown_content)
+        
+    except Exception as e:
+        # Fallback to MarkItDown if our custom parser fails
+        markitdown = MarkItDown()
+        return markitdown.convert(eml_path)
 
 app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
@@ -181,16 +279,19 @@ def convert_file():
             # Dosya türünü kontrol et
             mime_type, _ = mimetypes.guess_type(temp_filepath)
             is_image = mime_type and mime_type.startswith('image/')
+            is_eml = file.filename.lower().endswith('.eml') or mime_type == 'message/rfc822'
             
+            # EML dosyası ise özel parser kullan
+            if is_eml:
+                result = convert_eml_to_markdown(temp_filepath)
             # Archive dosyası ise içeriğini işle
-            if is_archive_file(file.filename):
+            elif is_archive_file(file.filename):
                 archive_type = get_archive_type(file.filename)
                 if archive_type == 'zip':
                     return process_zip_file(temp_filepath, file.filename)
                 # Gelecekte diğer archive türleri için buraya eklenebilir
-
             # Görüntü dosyası ise AI ile işle
-            if is_image:
+            elif is_image:
                 # AI provider'ın ayarlanıp ayarlanmadığını kontrol et
                 try:
                     ai_provider = AIProviderFactory.get_provider()
@@ -318,9 +419,13 @@ def process_zip_file(zip_filepath, original_filename):
                 # Dosya türünü kontrol et
                 mime_type, _ = mimetypes.guess_type(file_path)
                 is_image = mime_type and mime_type.startswith('image/')
+                is_eml = relative_path.lower().endswith('.eml') or mime_type == 'message/rfc822'
 
+                # EML dosyası ise özel parser kullan
+                if is_eml:
+                    result = convert_eml_to_markdown(file_path)
                 # Görüntü dosyası ise AI ile işle
-                if is_image:
+                elif is_image:
                     # AI provider'ın varlığını kontrol et
                     try:
                         ai_provider = AIProviderFactory.get_provider()
@@ -342,6 +447,7 @@ CONTENT:
 - For tables: Include all headers and data
 - For charts: Describe all elements and connections
 - For processes: Detail each step and flow
+- If it can’t provide any of these exactly, write a summary of the image.
 
 KEYWORDS: Important terms, project names, dates, metrics mentioned
 
@@ -425,9 +531,13 @@ def process_multiple_files(files):
                 # Check file type
                 mime_type, _ = mimetypes.guess_type(temp_filepath)
                 is_image = mime_type and mime_type.startswith('image/')
+                is_eml = file.filename.lower().endswith('.eml') or mime_type == 'message/rfc822'
                 
+                # Handle EML files with custom parser
+                if is_eml:
+                    result = convert_eml_to_markdown(temp_filepath)
                 # Handle archive files
-                if is_archive_file(file.filename):
+                elif is_archive_file(file.filename):
                     archive_type = get_archive_type(file.filename)
                     if archive_type == 'zip':
                         # Extract and process ZIP contents
@@ -458,6 +568,7 @@ CONTENT:
 - For tables: Include all headers and data
 - For charts: Describe all elements and connections
 - For processes: Detail each step and flow
+- If it can’t provide any of these exactly, write a summary of the image.
 
 KEYWORDS: Important terms, project names, dates, metrics mentioned
 

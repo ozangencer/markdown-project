@@ -40,6 +40,7 @@ The backend is implemented in `app.py` using Flask:
 
 - **File Processing**:
   - Uses the `MarkItDown` library to convert uploaded files to Markdown
+  - **Enhanced Email Processing**: Custom .eml parser using Python's email module for structured output with clean headers, message body, and attachment information (fallback to MarkItDown if needed)
   - Creates temporary files for processing and removes them after conversion
   - Only keeps generated Markdown files in the `uploads` directory
   - Stores all outputs with unique identifiers in filenames
@@ -106,7 +107,7 @@ The frontend consists of:
 - **File Accumulation System**: Progressive file addition with duplicate prevention
 - **Folder Drop Processing**: Recursively reads directory contents using webkitGetAsEntry() API
 - **Custom AI Restructuring**: Modal interface for user-defined prompts, API integration
-- **Intelligent .panda Document Processing**: Auto-detection of business consulting documents with specialized default prompts for comprehensive analysis
+- **Intelligent .panda Document Processing**: Auto-detection of business consulting documents (.panda files or .md + .png combinations) with specialized default prompts for comprehensive analysis
 - Manages file type detection and icon display
 - **Custom Filename Handling**: User input validation and custom download logic
 - Tracks current YouTube transcript for summarization
@@ -211,6 +212,7 @@ Based on the detected type, appropriate icons are displayed:
 - Excel spreadsheets: excel.png
 - PowerPoint presentations: powerpoint.png (MIME + extension support)
 - PDF files: pdf.png
+- Email files (.eml): email.png
 - Images: image.png
 - .panda files: panda.png (extension-based, treated as archives)
 - Other files: default.png
@@ -234,14 +236,20 @@ Based on the detected type, appropriate icons are displayed:
    - Uses natural sorting algorithm to order files numerically (e.g., "Slide1" before "Slide2")
    - Combines all conversions into a single Markdown file with proper headings
    - Handles errors for individual files without failing the entire process
-5. For regular files, the file is processed using the `MarkItDown` library
-6. **Content Formatting**: AI image analysis results are formatted into professional callout boxes:
+5. **For .eml email files**: Uses custom email parser built with Python's email module:
+   - **Structured Header Extraction**: From, To, CC, BCC, Subject, Date, Message-ID, Reply-To
+   - **Smart Body Processing**: Prioritizes plain text over HTML, with basic HTML-to-text conversion
+   - **Attachment Detection**: Lists all email attachments with filenames
+   - **Encoding Support**: Properly handles UTF-8 and other email encodings
+   - **Fallback Support**: Uses MarkItDown if custom parser encounters errors
+6. For regular files, the file is processed using the `MarkItDown` library
+7. **Content Formatting**: AI image analysis results are formatted into professional callout boxes:
    - HTML comments (`<!-- -->`) → `> [!NOTE] **Image Analysis**` callouts
    - Text markers (`-- Start/End of Image Content`) → Formatted callout blocks
    - Applied during both file processing and download operations
-7. The resulting Markdown is saved as a new file with unique identifier in filename
-8. The temporary uploaded file is deleted after processing
-9. The server returns the Markdown content and a download URL to the client
+8. The resulting Markdown is saved as a new file with unique identifier in filename
+9. The temporary uploaded file is deleted after processing
+10. The server returns the Markdown content and a download URL to the client
 
 #### YouTube Transcription
 1. YouTube URL is sent to the server using a POST request to `/convert-youtube`
@@ -265,14 +273,14 @@ The application includes specialized processing for business consulting document
 
 #### Auto-Detection System
 ```javascript
-const isPandaDocument = currentMarkdownContent && 
-                        currentMarkdownContent.includes('.panda') && 
-                        currentMarkdownContent.includes('# Description:') &&
-                        currentMarkdownContent.includes('![](assets/');
+const isPandaDocument = currentMarkdownContent && (
+    currentMarkdownContent.includes('.panda') ||
+    (currentMarkdownContent.includes('.md') && currentMarkdownContent.includes('.png'))
+);
 ```
 
 #### Specialized Business Prompt Template
-When .panda documents are detected, the system automatically loads a comprehensive prompt template designed for:
+When .panda documents or .md + .png combinations are detected, the system automatically loads a comprehensive prompt template designed for:
 
 **Document Types Supported:**
 - Gantt charts with timelines, dependencies, and resource allocation
@@ -294,7 +302,7 @@ When .panda documents are detected, the system automatically loads a comprehensi
 - Financial tables: Transcribe complete data sets with growth metrics and regional breakdowns
 
 #### User Experience
-- **Intelligent Defaults**: Pre-populated prompt appears automatically for .panda files
+- **Intelligent Defaults**: Pre-populated prompt appears automatically for .panda files or .md + .png combinations
 - **Full Customization**: Users can modify or replace the default prompt entirely  
 - **Seamless Integration**: Works with existing restructure workflow and all AI providers
 - **Professional Standards**: Ensures output meets consulting documentation requirements
@@ -379,7 +387,7 @@ The application is designed for simplicity rather than high-volume processing:
    - ✅ **Clipboard Image Paste Support**: Direct image paste from clipboard with automatic naming
    - ✅ **File Accumulation System**: Progressive file selection without auto-clearing, duplicate prevention
    - ✅ **Custom AI Restructuring**: User-defined prompts for content restructuring with modal interface
-   - ✅ **Intelligent .panda Business Document Analysis**: Auto-detection and specialized processing for consulting materials with comprehensive default prompts for Gantt charts, process flows, and business diagrams
+   - ✅ **Intelligent .panda Business Document Analysis**: Auto-detection and specialized processing for consulting materials (.panda files or .md + .png combinations) with comprehensive default prompts for Gantt charts, process flows, and business diagrams
    - ✅ **Folder Drop Support**: Drag and drop entire folders to process all contents recursively
    - Support for additional archive formats (RAR, 7z, etc.)
    - Configurable AI summarization options (brief vs detailed, focus areas)
