@@ -9,6 +9,7 @@ This application allows users to easily convert different file types to Markdown
 ## Features
 
 - Convert various file formats to Markdown
+- **Prompt Preferences Management** - View and edit all AI prompts used in the application through an intuitive interface
 - **Multiple file conversion** - Convert multiple files at once into a single Markdown document
 - **File accumulation system** - Add files progressively without losing previous selections
 - YouTube video transcription to Markdown with source URL reference
@@ -219,13 +220,35 @@ The application supports various file formats through the MarkItDown library, in
 
 ## Customizing AI Prompts
 
-The application uses customizable prompt templates stored in `prompt_templates.json`:
+### Prompt Preferences Interface
 
-- **File-specific prompts**: Different templates for .panda, .xlsx, .docx, .pdf files
-- **Easy customization**: Edit the JSON file to modify or add new prompt templates
-- **Automatic detection**: System automatically selects appropriate template based on file type
-- **Consulting focus**: .panda files get specialized business document analysis prompts by default
+The application includes a comprehensive **Prompt Preferences** tab where you can:
 
-To customize prompts, simply edit `prompt_templates.json` and restart the application.
+- **View all prompts**: Browse all AI prompts organized by category
+- **Edit prompts**: Modify any prompt directly in the interface
+- **See variables**: Automatically detect and display prompt variables like `{youtube_url}`, `{content}`
+- **Save changes**: Changes are saved immediately to `prompt_library.json`
+- **Reset to defaults**: Restore any prompt to its original version
+- **Categories**: Prompts are organized into:
+  - **File Processing**: Image analysis, document conversion
+  - **YouTube**: Video summarization (single and multiple)
+  - **General**: Content restructuring
+  - **File Templates**: Specific file type handlers (.panda, .xlsx, .pdf, .docx)
+
+### Using the Prompt Preferences
+
+1. Click the **Prompt Preferences** tab in the main interface
+2. Select a prompt from the dropdown or click on any prompt name in the category list
+3. Edit the prompt content in the text area
+4. Variables in curly braces (e.g., `{transcript}`) will be automatically replaced during execution
+5. Click **Save Changes** to apply your modifications
+6. Use **Reset to Default** to restore the original prompt
+
+### Technical Details
+
+- All prompts are stored in `prompt_library.json`
+- The system dynamically loads prompts using the `get_prompt()` function
+- Variables are automatically replaced at runtime
+- Changes are persistent across application restarts
 
 

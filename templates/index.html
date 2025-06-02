@@ -14,6 +14,7 @@
         <div class="tabs">
             <button class="tab-button active" id="fileTabButton">File Upload</button>
             <button class="tab-button" id="youtubeTabButton">YouTube URL</button>
+            <button class="tab-button" id="promptTabButton">Prompt Preferences</button>
         </div>
         <div class="info-box">
             <p><strong>Note:</strong> For image files and AI summarization, an AI provider API key must be set in the <code>.env</code> file.</p>
@@ -67,6 +68,45 @@
                     <button type="button" id="clearYoutubeButton">Clear</button>
                 </div>
             </form>
+        </div>
+
+        <div id="promptTab" class="tab-content" style="display: none;">
+            <div class="prompt-preferences">
+                <h3>Manage AI Prompts</h3>
+                <p class="prompt-description">Customize prompts for different use cases. Changes are saved automatically.</p>
+                
+                <div class="prompt-selector">
+                    <label for="promptSelect">Select Prompt:</label>
+                    <select id="promptSelect">
+                        <option value="">-- Select a prompt to edit --</option>
+                    </select>
+                </div>
+                
+                <div id="promptEditor" style="display: none;">
+                    <div class="prompt-info">
+                        <h4 id="promptName"></h4>
+                        <p id="promptDescription"></p>
+                        <div class="prompt-usage" id="promptUsage">
+                            <strong>Usage:</strong> <span id="promptUsageText"></span>
+                        </div>
+                        <span class="prompt-category" id="promptCategory"></span>
+                    </div>
+                    
+                    <div class="prompt-content">
+                        <label for="promptTextarea">Prompt Content:</label>
+                        <textarea id="promptTextarea" rows="15"></textarea>
+                        <div class="prompt-variables" id="promptVariables" style="display: none;">
+                            <p><strong>Variables:</strong> <span id="variablesList"></span></p>
+                        </div>
+                    </div>
+                    
+                    <div class="prompt-actions">
+                        <button type="button" id="savePromptButton">Save Changes</button>
+                        <button type="button" id="resetPromptButton">Reset to Default</button>
+                        <span id="promptSaveStatus" class="save-status"></span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div id="loadingOverlay" class="loading-overlay" style="display: none;">

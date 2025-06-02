@@ -22,6 +22,67 @@ The application follows a simple client-server architecture:
 3. **AI Integration**: Multi-provider AI system supporting OpenAI, DeepSeek, and Google APIs
 4. **AI Provider Layer**: Abstracted provider interface allowing runtime switching between AI services
 
+## Prompt Library System
+
+The application implements a centralized prompt management system that replaces hardcoded prompts throughout the codebase.
+
+### Architecture
+
+1. **Prompt Storage**: All prompts are stored in `prompt_library.json` with metadata:
+   - `name`: Human-readable prompt name
+   - `description`: Purpose and usage description
+   - `category`: Organization category (file_processing, youtube, general, system, file_templates)
+   - `prompt`: The actual prompt text with variable placeholders
+
+2. **Dynamic Loading**: Prompts are loaded using the `get_prompt()` function:
+   ```python
+   def get_prompt(prompt_key, variables=None):
+       library = load_prompt_library()
+       prompt = library[prompt_key]['prompt']
+       # Replace variables like {youtube_url}, {content}
+       if variables:
+           for key, value in variables.items():
+               prompt = prompt.replace(f'{{{key}}}', str(value))
+       return prompt
+   ```
+
+3. **Frontend Management**: The Prompt Preferences tab provides:
+   - Category-based organization
+   - Real-time editing with syntax highlighting
+   - Variable detection and display
+   - Save/Reset functionality
+   - Visual feedback for operations
+
+### API Endpoints
+
+- `GET /prompt-library`: Retrieve all prompts
+- `POST /prompt-library`: Update a specific prompt
+  ```json
+  {
+    "key": "image_analysis",
+    "prompt": "Updated prompt content..."
+  }
+  ```
+
+### Variable System
+
+Prompts support dynamic variables using `{variable_name}` syntax:
+- `{youtube_url}`: Replaced with actual YouTube URL
+- `{transcript}`: Replaced with video transcript
+- `{content}`: Replaced with document content
+- `{custom_prompt}`: User-provided custom instructions
+- `{videos_content}`: Multiple video transcripts
+
+### Migration from Hardcoded Prompts
+
+All hardcoded prompts have been migrated to the prompt library:
+- Image analysis prompts (3 instances)
+- YouTube summarization prompts (single and multiple)
+- Content restructuring prompt
+- File-specific templates (.panda, .xlsx, .pdf, .docx)
+
+Note: System prompts remain hardcoded as they define AI behavior and are not intended for user modification.
+
 ## Component Breakdown
 
 ### Backend (Python/Flask)
@@ -326,7 +387,9 @@ When .panda documents or .md + .png combinations are detected, the system automa
 ```
 markdown-project/
 ├── app.py                     # Main Flask application
-├── ai_providers.py            # AI provider abstraction layer (NEW)
+├── ai_providers.py            # AI provider abstraction layer
+├── prompt_library.json        # Centralized AI prompt storage
+├── prompt_templates.json      # Legacy file-specific templates
 ├── requirements.txt           # Python dependencies:\n│                              #   - google-generativeai==0.8.3\n│                              #   - Pillow==11.1.0\n│                              #   - (existing: Flask, markitdown, openai, python-dotenv)
 ├── .env                       # Environment variables (multiple API keys) - not in git
 ├── .gitignore                 # Git ignore configuration

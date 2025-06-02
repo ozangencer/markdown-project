@@ -183,7 +183,7 @@ class GoogleProvider(AIProvider):
             # Görüntüyü yükle
             image = PIL.Image.open(image_path)
             
-            # Varsayılan prompt
+            # Varsayılan prompt - sadece Google provider için dahili kullanım
             if not prompt:
                 prompt = """Analyze this image and provide a detailed description in markdown format. 
                 What do you see in the image? If there is text, read and include it. 

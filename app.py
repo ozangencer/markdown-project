@@ -12,6 +12,7 @@ from email.policy import default
 from pathlib import Path
 from dotenv import load_dotenv
 from ai_providers import AIProviderFactory
+import re
 
 # .env dosyasından çevre değişkenlerini yükle
 load_dotenv()
@@ -24,7 +25,6 @@ def clean_markdown_content(content):
         return content
     
     # Remove markdown code blocks at start and end
-    import re
     cleaned = re.sub(r'^```markdown\n', '', content)
     cleaned = re.sub(r'\n```$', '', cleaned)
     
@@ -51,19 +51,78 @@ def clean_markdown_content(content):
     
     return cleaned
 
-def load_prompt_templates():
+def load_prompt_library():
     """
-    Load prompt templates from JSON file
+    Load complete prompt library from JSON file
     """
     try:
-        with open('prompt_templates.json', 'r', encoding='utf-8') as f:
+        with open('prompt_library.json', 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
-        print("Warning: prompt_templates.json not found. Using default templates.")
+        print("Warning: prompt_library.json not found. Using default prompts.")
         return {}
     except Exception as e:
-        print(f"Error loading prompt templates: {e}")
+        print(f"Error loading prompt library: {e}")
         return {}
+
+def save_prompt_library(library):
+    """
+    Save prompt library to JSON file
+    """
+    try:
+        with open('prompt_library.json', 'w', encoding='utf-8') as f:
+            json.dump(library, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception as e:
+        print(f"Error saving prompt library: {e}")
+        return False
+
+def get_prompt(prompt_key, variables=None):
+    """
+    Get a prompt from the library and replace variables if provided
+    """
+    library = load_prompt_library()
+    prompt_data = library.get(prompt_key, {})
+    prompt = prompt_data.get('prompt', '')
+    
+    if variables:
+        for key, value in variables.items():
+            prompt = prompt.replace(f'{{{key}}}', str(value))
+    
+    return prompt
+
+def load_prompt_templates():
+    """
+    Load prompt templates from JSON file (legacy support)
+    """
+    # First try to load from prompt_library.json
+    library = load_prompt_library()
+    templates = {}
+    
+    # Convert file templates from library
+    for key, data in library.items():
+        if data.get('category') == 'file_templates':
+            # Map the prompts to file extensions
+            if key == 'panda_document':
+                templates['.panda'] = data['prompt']
+            elif key == 'excel_extract':
+                templates['.xlsx'] = data['prompt']
+            elif key == 'pdf_extract':
+                templates['.pdf'] = data['prompt']
+            elif key == 'docx_convert':
+                templates['.docx'] = data['prompt']
+            elif key == 'eml_extract':
+                templates['.eml'] = data['prompt']
+    
+    # If no templates found in library, try legacy file
+    if not templates:
+        try:
+            with open('prompt_templates.json', 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError, Exception) as e:
+            print(f"Error loading prompt_templates.json: {e}")
+    
+    return templates
 
 def get_template_for_extension(filename):
     """
@@ -129,7 +188,6 @@ def convert_eml_to_markdown(eml_path):
                     # Use HTML if no plain text found (we could improve this by converting HTML to markdown)
                     html_content = part.get_content()
                     # Simple HTML tag removal for basic conversion
-                    import re
                     body_content = re.sub(r'<[^>]+>', '', html_content)
                     body_content = body_content.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
         else:
@@ -214,9 +272,41 @@ def get_ai_providers():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/prompt-library', methods=['GET'])
+def get_prompt_library():
+    """Get the complete prompt library"""
+    try:
+        library = load_prompt_library()
+        return jsonify({"prompts": library})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/prompt-library', methods=['POST'])
+def update_prompt_library():
+    """Update a specific prompt in the library"""
+    data = request.json
+    if not data or 'key' not in data or 'prompt' not in data:
+        return jsonify({"error": "Prompt key and content are required!"}), 400
+    
+    try:
+        library = load_prompt_library()
+        
+        # Update the prompt if it exists
+        if data['key'] in library:
+            library[data['key']]['prompt'] = data['prompt']
+            if save_prompt_library(library):
+                return jsonify({"message": "Prompt updated successfully", "prompt": library[data['key']]})
+            else:
+                return jsonify({"error": "Failed to save prompt library"}), 500
+        else:
+            return jsonify({"error": f"Prompt key '{data['key']}' not found"}), 404
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/prompt-templates', methods=['GET'])
 def get_prompt_templates():
-    """Get available prompt templates"""
+    """Get available prompt templates (legacy endpoint)"""
     try:
         templates = load_prompt_templates()
         return jsonify({"templates": templates})
@@ -299,27 +389,7 @@ def convert_file():
                         return jsonify({"error": "AI provider is not configured. Please set API keys in the .env file."}), 400
 
                     # Image analysis prompt for professional presentation visuals
-                    custom_prompt = """Analyze this business document image and provide:
-
-# Description:
-Detailed analysis of the image content
-
-VISUAL TYPE: Identify if this is a Gantt Chart, Table, Flow Chart, Organization Chart, Timeline, Process Diagram, or other business visual
-
-TITLE: Main subject or heading of the visual
-
-CONTENT: 
-- Read and transcribe all visible text exactly as written
-- For tables: Include all headers and data
-- For charts: Describe all elements and connections
-- For processes: Detail each step and flow
-- If it can’t provide any of these exactly, write a summary of the image.
-
-KEYWORDS: Important terms, project names, dates, metrics mentioned
-
-CONTEXT: Business context where this visual would be used
-
-DETAILS: Any highlighted information, color coding, or critical data points"""
+                    custom_prompt = get_prompt('image_analysis')
                     
                     # AI provider'ın process_image metodunu kullan
                     result_text = ai_provider.process_image(temp_filepath, custom_prompt)
@@ -404,7 +474,6 @@ def process_zip_file(zip_filepath, original_filename):
 
         # Dosyaları doğal sıralamaya göre sırala (numaralandırılmış dosyalar için)
         def natural_sort_key(s):
-            import re
             # Sıralama anahtarı oluştur: "abc123def456" -> ["abc", 123, "def", 456]
             # Bu, dosya adlarındaki sayıları sayısal olarak sıralamaya olanak tanır
             return [int(text) if text.isdigit() else text.lower()
@@ -434,26 +503,7 @@ def process_zip_file(zip_filepath, original_filename):
                             continue
                             
                         # Image analysis prompt for professional presentation visuals
-                        custom_prompt = """Analyze this business document image and provide:
-
-Detailed analysis of the image content
-
-VISUAL TYPE: Identify if this is a Gantt Chart, Table, Flow Chart, Organization Chart, Timeline, Process Diagram, or other business visual
-
-TITLE: Main subject or heading of the visual
-
-CONTENT: 
-- Read and transcribe all visible text exactly as written
-- For tables: Include all headers and data
-- For charts: Describe all elements and connections
-- For processes: Detail each step and flow
-- If it can’t provide any of these exactly, write a summary of the image.
-
-KEYWORDS: Important terms, project names, dates, metrics mentioned
-
-CONTEXT: Business context where this visual would be used
-
-DETAILS: Any highlighted information, color coding, or critical data points"""
+                        custom_prompt = get_prompt('image_analysis')
                         
                         # Google provider için direkt process_image kullan, diğerleri için MarkItDown
                         client = ai_provider.get_client_for_markitdown()
@@ -544,37 +594,16 @@ def process_multiple_files(files):
                         zip_result = process_zip_file(temp_filepath, file.filename)
                         zip_data = json.loads(zip_result.get_data(as_text=True))
                         markdown_content += f"\n## File {i}: {file.filename}\n\n{zip_data['markdown']}\n\n---\n\n"
-                    continue
-                
+                        continue
                 # Handle images with AI
-                if is_image:
+                elif is_image:
                     try:
                         ai_provider = AIProviderFactory.get_provider()
                         if not ai_provider.is_available():
                             markdown_content += f"\n## File {i}: {file.filename}\n\n*This is an image file and requires AI provider configuration for conversion.*\n\n---\n\n"
                             continue
                             
-                        custom_prompt = """Analyze this business document image and provide:
-
-# Description:
-Detailed analysis of the image content
-
-VISUAL TYPE: Identify if this is a Gantt Chart, Table, Flow Chart, Organization Chart, Timeline, Process Diagram, or other business visual
-
-TITLE: Main subject or heading of the visual
-
-CONTENT: 
-- Read and transcribe all visible text exactly as written
-- For tables: Include all headers and data
-- For charts: Describe all elements and connections
-- For processes: Detail each step and flow
-- If it can’t provide any of these exactly, write a summary of the image.
-
-KEYWORDS: Important terms, project names, dates, metrics mentioned
-
-CONTEXT: Business context where this visual would be used
-
-DETAILS: Any highlighted information, color coding, or critical data points"""
+                        custom_prompt = get_prompt('image_analysis')
                         
                         # AI provider'ın process_image metodunu kullan (single file ile aynı)
                         result_text = ai_provider.process_image(temp_filepath, custom_prompt)
@@ -673,28 +702,14 @@ def summarize_youtube():
         if not ai_provider.is_available():
             return jsonify({"error": "AI provider is not configured. Please set API keys in the .env file."}), 400
 
-        # OpenAI API'yi kullanarak transcript'i özetle
-        prompt = f"""
-        You are an expert video summarizer and analyzer. Summarize and analyze the following YouTube video transcript.
-
-        Video URL: {youtube_url}
-
-        Transcript:
-        {transcript}
-
-        Please provide:
-        1. A concise 2-3 sentence summary of the video content
-        2. The main topics covered
-        3. Key takeaways or insights
-        4. Any notable quotes or statements
-        5. An overall analysis of the content
-
-        Format your response in Markdown with appropriate headings, bullet points, and formatting.
-        """
+        # Get prompt from library and replace variables
+        prompt = get_prompt('youtube_single_summary', {
+            'youtube_url': youtube_url,
+            'transcript': transcript
+        })
 
         # AI API çağrısı
         messages = [
-            {"role": "system", "content": "You are an expert video summarizer that creates well-structured markdown summaries."},
             {"role": "user", "content": prompt}
         ]
         
@@ -789,23 +804,18 @@ def summarize_youtube_multiple():
         if not ai_provider.is_available():
             return jsonify({"error": "AI provider is not configured. Please set API keys in the .env file."}), 400
 
-        # Prepare prompt for multiple videos
-        prompt = "You are an expert video summarizer and analyzer. Below are transcripts from multiple YouTube videos. Please provide:\n\n"
-        prompt += "1. A brief overview of all videos (2-3 sentences)\n"
-        prompt += "2. Individual summaries for each video\n"
-        prompt += "3. Common themes across all videos\n"
-        prompt += "4. Key takeaways from the collection\n"
-        prompt += "5. Any connections or contrasts between the videos\n\n"
-        prompt += "Videos:\n\n"
-        
+        # Prepare videos content
+        videos_content = ""
         for i, transcript in enumerate(transcripts, 1):
-            prompt += f"Video {i} ({transcript['url']}):\n{transcript['content']}\n\n"
+            videos_content += f"Video {i} ({transcript['url']}):\n{transcript['content']}\n\n"
         
-        prompt += "\nFormat your response in Markdown with appropriate headings, bullet points, and formatting."
+        # Get prompt from library and replace variables
+        prompt = get_prompt('youtube_multiple_summary', {
+            'videos_content': videos_content
+        })
 
         # AI API call
         messages = [
-            {"role": "system", "content": "You are an expert video summarizer that creates well-structured markdown summaries for multiple videos."},
             {"role": "user", "content": prompt}
         ]
         
@@ -854,21 +864,55 @@ def restructure_content():
         if not ai_provider.is_available():
             return jsonify({"error": "AI provider is not configured. Please set API keys in the .env file."}), 400
 
-        # Custom prompt ile AI API çağrısı
-        prompt = f"""
-        You are an AI assistant that helps restructure and reformat content based on user requirements.
+        # Detect document type and use appropriate prompt
+        is_panda_document = ('.panda' in content or 
+                           (('.md' in content or 'markdown' in content) and 
+                            ('.png' in content or '.PNG' in content)))
         
-        User's custom request: {custom_prompt}
+        is_excel_document = '.xlsx' in content or '.xls' in content
+        is_pdf_document = '.pdf' in content
+        is_docx_document = '.docx' in content or '.doc' in content
+        is_eml_document = '.eml' in content
         
-        Content to restructure:
-        {content}
-        
-        Please follow the user's request exactly and format your response in Markdown with appropriate headings, bullet points, and formatting.
-        """
+        if is_panda_document:
+            # Use panda document prompt for business documents
+            prompt = get_prompt('panda_document', {
+                'custom_prompt': custom_prompt,
+                'content': content
+            })
+        elif is_excel_document:
+            # Use Excel-specific prompt
+            prompt = get_prompt('excel_extract', {
+                'custom_prompt': custom_prompt,
+                'content': content
+            })
+        elif is_pdf_document:
+            # Use PDF-specific prompt
+            prompt = get_prompt('pdf_extract', {
+                'custom_prompt': custom_prompt,
+                'content': content
+            })
+        elif is_docx_document:
+            # Use Word-specific prompt
+            prompt = get_prompt('docx_convert', {
+                'custom_prompt': custom_prompt,
+                'content': content
+            })
+        elif is_eml_document:
+            # Use EML-specific prompt
+            prompt = get_prompt('eml_extract', {
+                'custom_prompt': custom_prompt,
+                'content': content
+            })
+        else:
+            # Use general content restructure prompt
+            prompt = get_prompt('content_restructure', {
+                'custom_prompt': custom_prompt,
+                'content': content
+            })
 
         # AI API çağrısı
         messages = [
-            {"role": "system", "content": "You are an expert content restructurer that follows user instructions precisely and creates well-structured markdown content."},
             {"role": "user", "content": prompt}
         ]
         
@@ -907,7 +951,6 @@ def download_custom():
 
     try:
         # Clean filename
-        import re
         filename = re.sub(r'[^\w\-_.]', '_', filename)
         if not filename.endswith('.md'):
             filename += '.md'
@@ -926,7 +969,7 @@ def download_custom():
             try:
                 if os.path.exists(temp_filepath):
                     os.remove(temp_filepath)
-            except:
+            except Exception:
                 pass
         
         response.call_on_close(remove_file)
@@ -941,4 +984,4 @@ def download_file(filename):
     return send_file(os.path.join(UPLOAD_FOLDER, filename), as_attachment=True)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5005)
+    app.run(debug=True, port=5003)

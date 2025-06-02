@@ -100,15 +100,19 @@ document.addEventListener("DOMContentLoaded", () => {
     fileTabButton.addEventListener("click", () => {
         fileTabButton.classList.add("active");
         youtubeTabButton.classList.remove("active");
+        promptTabButton.classList.remove("active");
         fileTab.style.display = "block";
         youtubeTab.style.display = "none";
+        promptTab.style.display = "none";
     });
 
     youtubeTabButton.addEventListener("click", () => {
         youtubeTabButton.classList.add("active");
         fileTabButton.classList.remove("active");
+        promptTabButton.classList.remove("active");
         youtubeTab.style.display = "block";
         fileTab.style.display = "none";
+        promptTab.style.display = "none";
     });
 
     // Dosya türü ile ikon eşleştirmeleri
@@ -872,4 +876,213 @@ document.addEventListener("DOMContentLoaded", () => {
     // Load AI providers and prompt templates on page load
     loadAIProviders();
     loadPromptTemplates();
+    
+    // Prompt Preferences tab functionality
+    const promptTabButton = document.getElementById("promptTabButton");
+    const promptTab = document.getElementById("promptTab");
+    const promptSelect = document.getElementById("promptSelect");
+    const promptEditor = document.getElementById("promptEditor");
+    const promptName = document.getElementById("promptName");
+    const promptDescription = document.getElementById("promptDescription");
+    const promptCategory = document.getElementById("promptCategory");
+    const promptTextarea = document.getElementById("promptTextarea");
+    const promptVariables = document.getElementById("promptVariables");
+    const variablesList = document.getElementById("variablesList");
+    const savePromptButton = document.getElementById("savePromptButton");
+    const resetPromptButton = document.getElementById("resetPromptButton");
+    const promptSaveStatus = document.getElementById("promptSaveStatus");
+    const promptUsage = document.getElementById("promptUsage");
+    const promptUsageText = document.getElementById("promptUsageText");
+    // Category list removed per user request
+    
+    let promptLibrary = {};
+    let originalPrompts = {};
+    
+    // Add prompt tab to tab switching
+    promptTabButton.addEventListener("click", () => {
+        fileTabButton.classList.remove("active");
+        youtubeTabButton.classList.remove("active");
+        promptTabButton.classList.add("active");
+        fileTab.style.display = "none";
+        youtubeTab.style.display = "none";
+        promptTab.style.display = "block";
+        
+        // Load prompt library when tab is opened
+        loadPromptLibrary();
+    });
+    
+    // Load prompt library
+    async function loadPromptLibrary() {
+        try {
+            const response = await fetch("/prompt-library");
+            if (response.ok) {
+                const data = await response.json();
+                promptLibrary = data.prompts;
+                originalPrompts = JSON.parse(JSON.stringify(data.prompts)); // Deep copy
+                populatePromptSelect();
+                // Category display removed per user request
+            }
+        } catch (error) {
+            console.error("Error loading prompt library:", error);
+        }
+    }
+    
+    // Populate prompt select dropdown
+    function populatePromptSelect() {
+        promptSelect.innerHTML = '<option value="">-- Select a prompt to edit --</option>';
+        
+        // Group prompts by category
+        const categories = {};
+        for (const [key, prompt] of Object.entries(promptLibrary)) {
+            const category = prompt.category || 'general';
+            if (!categories[category]) {
+                categories[category] = [];
+            }
+            categories[category].push({ key, ...prompt });
+        }
+        
+        // Add options grouped by category
+        for (const [category, prompts] of Object.entries(categories)) {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = category.charAt(0).toUpperCase() + category.slice(1).replace('_', ' ');
+            
+            prompts.forEach(prompt => {
+                const option = document.createElement('option');
+                option.value = prompt.key;
+                option.textContent = prompt.name;
+                optgroup.appendChild(option);
+            });
+            
+            promptSelect.appendChild(optgroup);
+        }
+    }
+    
+    // Display prompt categories function removed per user request
+    
+    // Load selected prompt
+    function loadSelectedPrompt() {
+        const selectedKey = promptSelect.value;
+        if (!selectedKey) {
+            promptEditor.style.display = 'none';
+            return;
+        }
+        
+        const prompt = promptLibrary[selectedKey];
+        if (!prompt) return;
+        
+        promptEditor.style.display = 'block';
+        promptName.textContent = prompt.name;
+        promptDescription.textContent = prompt.description || '';
+        promptCategory.textContent = prompt.category || 'general';
+        promptTextarea.value = prompt.prompt;
+        
+        // Show usage information
+        if (prompt.usage) {
+            promptUsage.style.display = 'block';
+            promptUsageText.textContent = prompt.usage;
+        } else {
+            promptUsage.style.display = 'none';
+        }
+        
+        // Find and display variables
+        const variables = findPromptVariables(prompt.prompt);
+        if (variables.length > 0) {
+            promptVariables.style.display = 'block';
+            variablesList.innerHTML = variables.map(v => `<code>{${v}}</code>`).join(', ');
+        } else {
+            promptVariables.style.display = 'none';
+        }
+        
+        // Clear save status
+        promptSaveStatus.textContent = '';
+        promptSaveStatus.className = 'save-status';
+    }
+    
+    // Find variables in prompt
+    function findPromptVariables(prompt) {
+        const regex = /\{([^}]+)\}/g;
+        const variables = [];
+        let match;
+        
+        while ((match = regex.exec(prompt)) !== null) {
+            if (!variables.includes(match[1])) {
+                variables.push(match[1]);
+            }
+        }
+        
+        return variables;
+    }
+    
+    // Save prompt
+    savePromptButton.addEventListener("click", async () => {
+        const selectedKey = promptSelect.value;
+        if (!selectedKey) return;
+        
+        const newPrompt = promptTextarea.value.trim();
+        if (!newPrompt) {
+            alert('Prompt content cannot be empty.');
+            return;
+        }
+        
+        try {
+            const response = await fetch("/prompt-library", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    key: selectedKey,
+                    prompt: newPrompt
+                }),
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                promptLibrary[selectedKey].prompt = newPrompt;
+                
+                // Reload prompt templates to update cache
+                await loadPromptTemplates();
+                
+                // Show success status
+                promptSaveStatus.textContent = 'Saved successfully!';
+                promptSaveStatus.className = 'save-status success';
+                
+                // Clear status and prompt details after 3 seconds
+                setTimeout(() => {
+                    promptSaveStatus.textContent = '';
+                    promptSaveStatus.className = 'save-status';
+                    // Clear prompt selection and hide editor
+                    promptSelect.value = '';
+                    promptEditor.style.display = 'none';
+                }, 3000);
+            } else {
+                const error = await response.json();
+                promptSaveStatus.textContent = `Error: ${error.error}`;
+                promptSaveStatus.className = 'save-status error';
+            }
+        } catch (error) {
+            promptSaveStatus.textContent = `Error: ${error.message}`;
+            promptSaveStatus.className = 'save-status error';
+        }
+    });
+    
+    // Reset prompt to default
+    resetPromptButton.addEventListener("click", () => {
+        const selectedKey = promptSelect.value;
+        if (!selectedKey) return;
+        
+        if (confirm('Are you sure you want to reset this prompt to its default value?')) {
+            const originalPrompt = originalPrompts[selectedKey];
+            if (originalPrompt) {
+                promptTextarea.value = originalPrompt.prompt;
+                promptLibrary[selectedKey].prompt = originalPrompt.prompt;
+                
+                // Save the reset
+                savePromptButton.click();
+            }
+        }
+    });
+    
+    // Handle prompt select change
+    promptSelect.addEventListener("change", loadSelectedPrompt);
 });
