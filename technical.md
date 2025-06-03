@@ -273,6 +273,7 @@ Based on the detected type, appropriate icons are displayed:
 - Excel spreadsheets: excel.png
 - PowerPoint presentations: powerpoint.png (MIME + extension support)
 - PDF files: pdf.png
+- CSV files (.csv): csv.png
 - Email files (.eml): email.png
 - Images: image.png
 - .panda files: panda.png (extension-based, treated as archives)
@@ -397,6 +398,7 @@ markdown-project/
 ├── technical.md               # Technical documentation
 ├── static/
 │   ├── icons/                 # File type icons
+│   │   ├── csv.png            # CSV file icon
 │   │   ├── default.png        # Default file icon
 │   │   ├── excel.png          # Excel file icon
 │   │   ├── image.png          # Image file icon
