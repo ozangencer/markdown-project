@@ -57,6 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const uploadForm = document.getElementById("uploadForm");
     const markdownContent = document.getElementById("markdownContent");
     const downloadButton = document.getElementById("downloadButton");
+    const downloadSeparateButton = document.getElementById("downloadSeparateButton");
     const downloadSection = document.getElementById("downloadSection");
     const filenameInput = document.getElementById("filenameInput");
     const filePreview = document.getElementById("filePreview");
@@ -95,6 +96,45 @@ document.addEventListener("DOMContentLoaded", () => {
     
     // Store prompt templates
     let promptTemplates = {};
+    
+    // Function to check if content has multiple file sections
+    function hasMultipleFileSections(content) {
+        if (!content) return false;
+        
+        // First, look for "## File X:" patterns (original method)
+        const filePattern = /## File \d+:/g;
+        const fileMatches = content.match(filePattern);
+        
+        // If found 2+ file sections, use original logic
+        if (fileMatches && fileMatches.length >= 2) {
+            console.log('Multiple files detected via "## File X:" pattern:', fileMatches.length);
+            return true;
+        }
+        
+        // Alternative: Look for multiple H1 headers (# Title)
+        const h1Pattern = /^# .+$/gm;
+        const h1Matches = content.match(h1Pattern);
+        
+        // Debug logging
+        console.log('Content check for multiple sections:');
+        console.log('- Content length:', content.length);
+        console.log('- File pattern matches:', fileMatches);
+        console.log('- H1 pattern matches:', h1Matches);
+        console.log('- Has multiple sections:', (h1Matches && h1Matches.length >= 2));
+        console.log('- Content preview:', content.substring(0, 500));
+        
+        // Return true if 2+ H1 headers found
+        return h1Matches && h1Matches.length >= 2;
+    }
+    
+    // Function to update download button visibility
+    function updateDownloadButtonVisibility() {
+        if (currentMarkdownContent && hasMultipleFileSections(currentMarkdownContent)) {
+            downloadSeparateButton.style.display = "inline-block";
+        } else {
+            downloadSeparateButton.style.display = "none";
+        }
+    }
 
     // Tab switching functionality
     fileTabButton.addEventListener("click", () => {
@@ -186,6 +226,8 @@ document.addEventListener("DOMContentLoaded", () => {
         
         // Modern browser support için DataTransferItem kullan
         if (items) {
+            const promises = [];
+            
             for (let i = 0; i < items.length; i++) {
                 const item = items[i];
                 if (item.kind === 'file') {
@@ -193,8 +235,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (entry) {
                         if (entry.isDirectory) {
                             // Klasör ise, içindeki tüm dosyaları recursively al
-                            const folderFiles = await readDirectoryRecursively(entry);
-                            files.push(...folderFiles);
+                            promises.push(readDirectoryRecursively(entry));
                         } else if (entry.isFile) {
                             // Normal dosya ise
                             const file = item.getAsFile();
@@ -202,6 +243,15 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     }
                 }
+            }
+            
+            // Tüm klasör okuma işlemlerini paralel olarak bekle
+            if (promises.length > 0) {
+                const allFolderFiles = await Promise.all(promises);
+                // Tüm klasörlerden gelen dosyaları birleştir
+                allFolderFiles.forEach(folderFiles => {
+                    files.push(...folderFiles);
+                });
             }
         }
         
@@ -362,6 +412,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 // Enable restructure button for files
                 restructureFileButton.disabled = false;
+                
+                // Update download button visibility
+                updateDownloadButtonVisibility();
             } else {
                 const error = await response.json();
                 markdownContent.textContent = `Error: ${error.error}`;
@@ -419,6 +472,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     summarizeYoutubeButton.disabled = false;
                     restructureYoutubeButton.disabled = false;
                 }
+                
+                // Update download button visibility
+                updateDownloadButtonVisibility();
             } else {
                 const error = await response.json();
                 markdownContent.textContent = `Error: ${error.error}`;
@@ -447,6 +503,7 @@ document.addEventListener("DOMContentLoaded", () => {
         currentMarkdownContent = "";
         currentDownloadUrl = "";
         restructureFileButton.disabled = true;
+        downloadSeparateButton.style.display = "none";
     });
 
     // YouTube form clear butonu
@@ -466,6 +523,7 @@ document.addEventListener("DOMContentLoaded", () => {
         restructureYoutubeButton.disabled = true;
         currentMarkdownContent = "";
         currentDownloadUrl = "";
+        downloadSeparateButton.style.display = "none";
     });
 
     // Add another YouTube URL input
@@ -532,6 +590,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 markdownContent.textContent = result.markdown;
                 downloadSection.style.display = "block";
                 filenameInput.value = "";
+                
+                // Update download button visibility
+                updateDownloadButtonVisibility();
             } else {
                 const error = await response.json();
                 markdownContent.textContent = `Error: ${error.error}`;
@@ -548,8 +609,10 @@ document.addEventListener("DOMContentLoaded", () => {
     function cleanMarkdownContent(content) {
         if (!content) return content;
         
-        // Remove markdown code blocks at start and end
-        let cleaned = content.replace(/^```markdown\n/, '').replace(/\n```$/, '');
+        // Remove markdown code blocks at start and end (various formats)
+        let cleaned = content.replace(/^```markdown\s*\n/, '');
+        cleaned = cleaned.replace(/^```\s*\n/, '');  // Just ``` without language
+        cleaned = cleaned.replace(/\n\s*```\s*$/, '');  // Allow whitespace before closing
         
         // Replace HTML comments with simpler markers
         cleaned = cleaned.replace(/<!--\s*/g, '-- Start of Image Content\n');
@@ -600,6 +663,50 @@ document.addEventListener("DOMContentLoaded", () => {
             window.location.href = currentDownloadUrl;
         } else {
             alert("No file available for download.");
+        }
+    });
+
+    // Download Separate Files button handler
+    downloadSeparateButton.addEventListener("click", async (e) => {
+        e.preventDefault();
+        
+        if (!currentMarkdownContent) {
+            alert("No content available for download.");
+            return;
+        }
+        
+        if (!hasMultipleFileSections(currentMarkdownContent)) {
+            alert("Content must contain multiple file sections to download separately. Use regular download for single files.");
+            return;
+        }
+        
+        try {
+            const response = await fetch("/download-separate", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    content: currentMarkdownContent
+                }),
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `separate_files_${Date.now()}.zip`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            } else {
+                const error = await response.json();
+                alert(`Error: ${error.error}`);
+            }
+        } catch (error) {
+            alert(`Error: ${error.message}`);
         }
     });
 
@@ -859,11 +966,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (response.ok) {
                 const result = await response.json();
-                currentMarkdownContent = result.markdown;
+                // Clean markdown content before processing
+                const cleanedContent = cleanMarkdownContent(result.markdown);
+                currentMarkdownContent = cleanedContent;
                 currentDownloadUrl = result.download_url;
-                markdownContent.textContent = result.markdown;
+                markdownContent.textContent = cleanedContent;
                 downloadSection.style.display = "block";
                 filenameInput.value = "";
+                
+                // Update download button visibility
+                updateDownloadButtonVisibility();
             } else {
                 const error = await response.json();
                 markdownContent.textContent = `Error: ${error.error}`;

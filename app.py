@@ -24,9 +24,10 @@ def clean_markdown_content(content):
     if not content:
         return content
     
-    # Remove markdown code blocks at start and end
-    cleaned = re.sub(r'^```markdown\n', '', content)
-    cleaned = re.sub(r'\n```$', '', cleaned)
+    # Remove markdown code blocks at start and end (various formats)
+    cleaned = re.sub(r'^```markdown\s*\n', '', content)
+    cleaned = re.sub(r'^```\s*\n', '', cleaned)  # Just ``` without language
+    cleaned = re.sub(r'\n\s*```\s*$', '', cleaned)  # Allow whitespace before closing
     
     # Replace HTML comments with callout format
     cleaned = re.sub(r'<!--\s*', '\n> [!NOTE] **Image Analysis**\n> ', cleaned)
@@ -50,6 +51,73 @@ def clean_markdown_content(content):
                      format_image_content, cleaned, flags=re.DOTALL)
     
     return cleaned
+
+def split_markdown_by_files(content):
+    """
+    Split markdown content by ## File X: filename patterns or H1 headers and return separate files
+    Returns a list of tuples: (original_filename, content)
+    """
+    if not content:
+        return []
+    
+    # Method 1: Try to split by "## File X:" patterns (original method)
+    file_pattern = r'## File \d+: (.+?)(?=\n|\r\n)'
+    file_matches = list(re.finditer(file_pattern, content))
+    
+    if len(file_matches) >= 2:
+        # Use original logic for ## File X: patterns
+        sections = re.split(r'## File \d+: [^\n\r]+', content)
+        filenames = [match.group(1).strip() for match in file_matches]
+        
+        # Skip the first section (usually contains header content before first file)
+        if len(sections) > 1:
+            sections = sections[1:]
+        
+        result = []
+        for i, section in enumerate(sections):
+            if i < len(filenames):
+                filename = filenames[i]
+                section_content = section.strip()
+                section_content = re.sub(r'\n---\n*$', '', section_content)
+                section_content = section_content.strip()
+                
+                if section_content:
+                    base_filename = os.path.splitext(filename)[0]
+                    final_content = f"# {base_filename}\n\n{section_content}"
+                    result.append((filename, final_content))
+        
+        return result
+    
+    # Method 2: Try to split by H1 headers (# Title)
+    h1_pattern = r'^# (.+)$'
+    h1_matches = list(re.finditer(h1_pattern, content, re.MULTILINE))
+    
+    if len(h1_matches) >= 2:
+        result = []
+        
+        for i, match in enumerate(h1_matches):
+            title = match.group(1).strip()
+            start_pos = match.start()
+            
+            # Find the end position (start of next H1 or end of content)
+            if i + 1 < len(h1_matches):
+                end_pos = h1_matches[i + 1].start()
+                section_content = content[start_pos:end_pos].strip()
+            else:
+                section_content = content[start_pos:].strip()
+            
+            if section_content:
+                # Generate filename from title
+                safe_title = re.sub(r'[^\w\s-]', '', title)  # Remove special chars
+                safe_title = re.sub(r'\s+', '_', safe_title.strip())  # Replace spaces with underscores
+                filename = f"{safe_title}.md"
+                
+                result.append((filename, section_content))
+        
+        return result
+    
+    # If neither method finds multiple sections, return empty
+    return []
 
 def load_prompt_library():
     """
@@ -969,6 +1037,75 @@ def download_custom():
             try:
                 if os.path.exists(temp_filepath):
                     os.remove(temp_filepath)
+            except Exception:
+                pass
+        
+        response.call_on_close(remove_file)
+        
+        return response
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/download-separate', methods=['POST'])
+def download_separate_files():
+    """
+    Download content as separate files in a ZIP archive
+    Only works for content that has multiple file sections (## File X: filename patterns)
+    """
+    data = request.json
+    if not data or 'content' not in data:
+        return jsonify({"error": "Content is required!"}), 400
+
+    content = data['content']
+    if not content:
+        return jsonify({"error": "Content is empty!"}), 400
+
+    try:
+        # Split content by file sections
+        file_sections = split_markdown_by_files(content)
+        
+        if len(file_sections) < 2:
+            return jsonify({"error": "Content must contain multiple file sections (## File X: filename) to download separately. Use regular download for single files."}), 400
+
+        # Create a temporary directory for the files
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Create individual markdown files
+            for original_filename, file_content in file_sections:
+                # Clean filename for safe filesystem use
+                safe_filename = re.sub(r'[^\w\-_.]', '_', original_filename)
+                
+                # Ensure .md extension
+                if not safe_filename.lower().endswith('.md'):
+                    base_name = os.path.splitext(safe_filename)[0]
+                    safe_filename = f"{base_name}.md"
+                
+                # Write individual file
+                file_path = os.path.join(temp_dir, safe_filename)
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(clean_markdown_content(file_content))
+            
+            # Create ZIP file
+            zip_filename = f"separate_files_{uuid.uuid4()}.zip"
+            zip_filepath = os.path.join(UPLOAD_FOLDER, zip_filename)
+            
+            with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                # Add all markdown files to the ZIP
+                for root, _, files in os.walk(temp_dir):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        # Add file to ZIP with relative path
+                        arcname = os.path.relpath(file_path, temp_dir)
+                        zipf.write(file_path, arcname)
+
+        # Return the ZIP file
+        response = send_file(zip_filepath, as_attachment=True, download_name=f"separate_markdown_files_{uuid.uuid4().hex[:8]}.zip")
+        
+        # Clean up the ZIP file after sending
+        def remove_file():
+            try:
+                if os.path.exists(zip_filepath):
+                    os.remove(zip_filepath)
             except Exception:
                 pass
         

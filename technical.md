@@ -98,6 +98,7 @@ The backend is implemented in `app.py` using Flask:
   - `/ai-providers` - GET/POST endpoints for AI provider management
   - `/download/<filename>` - Facilitates downloading converted files
   - `/download-custom` - Custom filename download endpoint with content formatting (POST)
+  - `/download-separate` - Downloads multiple file sections as separate Markdown files in ZIP format (POST)
 
 - **File Processing**:
   - Uses the `MarkItDown` library to convert uploaded files to Markdown
@@ -169,6 +170,7 @@ The frontend consists of:
 - **Folder Drop Processing**: Recursively reads directory contents using webkitGetAsEntry() API
 - **Custom AI Restructuring**: Modal interface for user-defined prompts, API integration
 - **Intelligent .panda Document Processing**: Auto-detection of business consulting documents (.panda files or .md + .png combinations) with specialized default prompts for comprehensive analysis
+- **Separate File Download Management**: Detects multi-file content and shows ZIP download option
 - Manages file type detection and icon display
 - **Custom Filename Handling**: User input validation and custom download logic
 - Tracks current YouTube transcript for summarization
@@ -177,7 +179,7 @@ The frontend consists of:
 - Implements loading state with UI feedback
 - Disables controls during processing
 - Updates UI with conversion results
-- Facilitates downloading converted files with custom names
+- Facilitates downloading converted files with custom names or as separate files
 
 ## AI Provider Architecture
 

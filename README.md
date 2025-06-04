@@ -22,6 +22,7 @@ This application allows users to easily convert different file types to Markdown
 - Image to Markdown conversion using AI with multiple provider options
 - **Professional callout formatting** - AI image analysis results are presented in attractive callout boxes for better readability
 - **Custom filename support** - Set custom names for downloaded Markdown files
+- **Separate file downloads** - Download multiple processed files as individual Markdown files in a ZIP archive (available after AI restructuring of multi-file content)
 - **Archive file processing** - ZIP files and other archive formats (like .panda) with automatic extraction and conversion of all contents
 - **Folder drop support** - Drag and drop entire folders to convert all files inside recursively
 - Natural sorting for extracted files with numerical names (e.g., "Slide1.png" before "Slide2.png")
@@ -130,6 +131,7 @@ http://127.0.0.1:5003
    - The converted (or restructured) Markdown will appear in the output area
    - **Optional**: Enter a custom filename in the "File Name" field
    - Click the "Download Markdown" button to save the result with your chosen name
+   - **Multiple File Downloads**: If you uploaded multiple files and used AI restructuring, a "Download as Separate Files (ZIP)" button will appear, allowing you to download each original file as a separate Markdown file in a ZIP archive
 
 7. **Start Over**:
    - Click the "Clear" button to reset the interface and convert more files
